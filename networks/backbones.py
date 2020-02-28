@@ -7,7 +7,7 @@ from .common import conv_bn_relu
 def alexnet(input_t):
     output_t = input_t
 
-    with tf.name_scope('AlexNet') as scope:
+    with tf.variable_scope('AlexNet') as scope:
         # conv
         output_t = conv_bn_relu(output_t, name='block_1', out_channel=96, strides=2, ksize=11)
         # pool, the original pytorch implementation use maxpooling with ceil_mode, which is not employ here

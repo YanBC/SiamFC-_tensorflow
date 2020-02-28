@@ -14,53 +14,51 @@ def conv_bn_relu(input_t,
                  has_bn=True,
                  has_relu=True,
                  has_bias=True):
-    in_channel = input_t.shape[3]
+    
+    with tf.variable_scope(name):
+        in_channel = input_t.shape[3]
+        conv_weights = get_variable(
+                            name=f'weights',
+                            shape=[ksize, ksize, in_channel, out_channel],
+                            initializer=he_normal(),
+                            trainable=True)
+        if has_bias:
+            conv_bias = get_variable(
+                            name=f'bias',
+                            shape=[out_channel,],
+                            initializer=he_normal(),
+                            trainable=True)
+        if has_bn:
+            bn_means = get_variable(
+                            name=f'means',
+                            shape=[out_channel,],
+                            initializer=he_normal(),
+                            trainable=True)
+            bn_variances = get_variable(
+                            name=f'variances',
+                            shape=[out_channel,],
+                            initializer=he_normal(),
+                            trainable=True)
 
-    conv_weights = get_variable(
-                        name=f'{name}_weights',
-                        shape=[ksize, ksize, in_channel, out_channel],
-                        initializer=he_normal(),
-                        trainable=True)
-    if has_bias:
-        conv_bias = get_variable(
-                        name=f'{name}_bias',
-                        shape=[out_channel,],
-                        initializer=he_normal(),
-                        trainable=True)
-    if has_bn:
-        bn_means = get_variable(
-                        name=f'{name}_means',
-                        shape=[out_channel,],
-                        initializer=he_normal(),
-                        trainable=True)
-        bn_variances = get_variable(
-                        name=f'{name}_variances',
-                        shape=[out_channel,],
-                        initializer=he_normal(),
-                        trainable=True)
+        output_t = conv2d(input_t, 
+                          filter=conv_weights,
+                          strides=strides,
+                          padding='VALID',
+                          name=f'conv')
+        if has_bias:
+            output_t = bias_add(output_t, conv_bias, name=f'biasadd')
+        if has_bn:
+            output_t = batch_normalization(output_t,
+                                           mean=bn_means,
+                                           variance=bn_variances,
+                                           offset=None,
+                                           scale=None,
+                                           variance_epsilon=1e-05,
+                                           name=f'bn')
+        if has_relu:
+            output_t = relu(output_t, name=f'relu')
 
-    output_t = conv2d(input_t, 
-                      filter=conv_weights,
-                      strides=strides,
-                      padding='VALID',
-                      name=f'{name}_conv')
-
-    if has_bias:
-        output_t = bias_add(output_t, conv_bias, name=f'{name}_biasadd')
-
-    if has_bn:
-        output_t = batch_normalization(output_t,
-                                       mean=bn_means,
-                                       variance=bn_variances,
-                                       offset=None,
-                                       scale=None,
-                                       variance_epsilon=1e-05,
-                                       name=f'{name}_bn')
-
-    if has_relu:
-        output_t = relu(output_t, name=f'{name}_relu')
-
-    return output_t
+        return output_t
 
 
 
@@ -71,7 +69,7 @@ def xcorr_depthwise(x, kernel, name):
     '''
     borrow from https://github.com/torrvision/siamfc-tf/blob/master/src/siamese.py
     '''
-    with tf.name_scope(name) as scope:
+    with tf.variable_scope(name):
         net_z = tf.transpose(kernel, perm=[1,2,0,3])
         net_x = tf.transpose(x, perm=[1,2,0,3])
 
