@@ -19,8 +19,8 @@ def alexnet(input_t):
         # conv
         output_t = conv_bn_relu(output_t, name='block_3', out_channel=384, strides=1, ksize=3)
         # conv
-        output_t = conv_bn_relu(output_t, name='block_3', out_channel=384, strides=1, ksize=3)
+        output_t = conv_bn_relu(output_t, name='block_4', out_channel=384, strides=1, ksize=3)
         # conv
-        output_t = conv_bn_relu(output_t, name='block_3', out_channel=256, strides=1, ksize=3, has_relu=False)
+        output_t = conv_bn_relu(output_t, name='block_5', out_channel=256, strides=1, ksize=3, has_relu=False)
 
     return output_t

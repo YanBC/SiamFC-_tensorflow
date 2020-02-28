@@ -80,7 +80,7 @@ def xcorr_depthwise(x, kernel, name):
         net_x = tf.reshape(net_x, (1, Hx, Wx, B*C))
         net_final = depthwise_conv2d(net_x, net_z, strides=[1,1,1,1], padding='VALID', name='correlation')
 
-        _, H, W, _ = tf.shape(net_final)
+        _, H, W, _ = tf.unstack(tf.shape(net_final))
         net_final = tf.reshape(net_final, (H, W, B, C))
         net_final = tf.transpose(net_final, perm=[2,0,1,3])
 

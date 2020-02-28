@@ -30,9 +30,9 @@ def denseboxhead(input_cls, input_reg):
 
     with tf.variable_scope('DenseBox'):
         with tf.variable_scope('constants'):
-            bi = get_variable(name='bi', initializer=0, trainable=True)
-            si = get_variable(name='si', initializer=1, trainable=True)
-            total_stride = constant(TOTALSTRIDE)
+            bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
+            si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32)
+            total_stride = constant(float(TOTALSTRIDE))
             fm_ctr = get_xy_ctr(SCORESIZE, SCOREOFFSET, TOTALSTRIDE)
 
         with tf.variable_scope('conv'):
@@ -46,12 +46,12 @@ def denseboxhead(input_cls, input_reg):
 
         with tf.variable_scope('cls_score'):
             cls_score = conv_bn_relu(output_cls, name='conv', out_channel=1, strides=1, ksize=1, has_relu=False)
-            cls_B, cls_H, cls_W, cls_C = tf.shape(cls_score, name='shape')
+            cls_B, cls_H, cls_W, cls_C = tf.unstack(tf.shape(cls_score, name='shape'))
             cls_score = tf.reshape(cls_score, (cls_B, cls_H*cls_W, cls_C), name='reshape')
 
         with tf.variable_scope('ctr_score'):
             ctr_score = conv_bn_relu(output_cls, name='conv', out_channel=1, strides=1, ksize=1, has_relu=False)
-            ctr_B, ctr_H, ctr_W, ctr_C = tf.shape(ctr_score, name='shape')
+            ctr_B, ctr_H, ctr_W, ctr_C = tf.unstack(tf.shape(ctr_score, name='shape'))
             ctr_score = tf.reshape(ctr_score, (ctr_B, ctr_H*ctr_W, ctr_C), name='reshape')
 
         with tf.variable_scope('offset'):
@@ -59,13 +59,13 @@ def denseboxhead(input_cls, input_reg):
             offset = (si * offset + bi) * total_stride
             offset = tf.exp(offset, name='exp')
 
-            offset_B, offset_H, offset_W, offset_C = tf.shape(offset, name='shape')
+            offset_B, offset_H, offset_W, offset_C = tf.unstack(tf.shape(offset, name='shape'))
             offset = tf.reshape(offset, (offset_B, offset_H*offset_W, offset_C), name='reshape')
             xy0 = fm_ctr - offset[:, :, 0:2]
             xy1 = fm_ctr + offset[:, :, 2:]
             bbox = tf.concat([xy0, xy1], axis=2)
 
-        return bbox
+        return cls_score, ctr_score, bbox
 
 
 
