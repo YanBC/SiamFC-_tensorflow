@@ -1,9 +1,11 @@
+import tensorflow as tf
+if __name__ == '__main__':
+    tf.enable_eager_execution()
 from tensorflow.compat.v1.nn import conv2d, bias_add, batch_normalization, relu
 from tensorflow.compat.v1.nn import depthwise_conv2d
 from tensorflow.compat.v1 import get_variable
 from tensorflow.compat.v1.initializers import he_normal
-# from tensorflow import pad
-import tensorflow as tf
+
 
 
 def conv_bn_relu(input_t,
@@ -15,38 +17,36 @@ def conv_bn_relu(input_t,
                  has_relu=True,
                  has_bias=True):
     
-    with tf.variable_scope(name):
+    with tf.variable_scope(name, initializer=he_normal(), reuse=tf.compat.v1.AUTO_REUSE):
         in_channel = input_t.shape[3]
-        conv_weights = get_variable(
-                            name=f'weights',
-                            shape=[ksize, ksize, in_channel, out_channel],
-                            initializer=he_normal(),
-                            trainable=True)
-        if has_bias:
-            conv_bias = get_variable(
-                            name=f'bias',
-                            shape=[out_channel,],
-                            initializer=he_normal(),
-                            trainable=True)
-        if has_bn:
-            bn_means = get_variable(
-                            name=f'means',
-                            shape=[out_channel,],
-                            initializer=he_normal(),
-                            trainable=True)
-            bn_variances = get_variable(
-                            name=f'variances',
-                            shape=[out_channel,],
-                            initializer=he_normal(),
-                            trainable=True)
+
+        with tf.variable_scope('weights'):
+            conv_weights = get_variable(
+                                name='weights',
+                                shape=[ksize, ksize, in_channel, out_channel],
+                                trainable=True)
+            if has_bias:
+                conv_bias = get_variable(
+                                name='bias',
+                                shape=[out_channel,],
+                                trainable=True)
+            if has_bn:
+                bn_means = get_variable(
+                                name='means',
+                                shape=[out_channel,],
+                                trainable=True)
+                bn_variances = get_variable(
+                                name='variances',
+                                shape=[out_channel,],
+                                trainable=True)
 
         output_t = conv2d(input_t, 
                           filter=conv_weights,
                           strides=strides,
                           padding='VALID',
-                          name=f'conv')
+                          name='conv')
         if has_bias:
-            output_t = bias_add(output_t, conv_bias, name=f'biasadd')
+            output_t = bias_add(output_t, conv_bias, name='biasadd')
         if has_bn:
             output_t = batch_normalization(output_t,
                                            mean=bn_means,
@@ -54,9 +54,9 @@ def conv_bn_relu(input_t,
                                            offset=None,
                                            scale=None,
                                            variance_epsilon=1e-05,
-                                           name=f'bn')
+                                           name='bn')
         if has_relu:
-            output_t = relu(output_t, name=f'relu')
+            output_t = relu(output_t, name='relu')
 
         return output_t
 
@@ -80,10 +80,24 @@ def xcorr_depthwise(x, kernel, name):
         net_x = tf.reshape(net_x, (1, Hx, Wx, B*C))
         net_final = depthwise_conv2d(net_x, net_z, strides=[1,1,1,1], padding='VALID', name='correlation')
 
-        net_final = tf.concat(tf.split(net_final, 3, axis=3), axis=0)
-
-        net_final = tf.expand_dims(tf.reduce_sum(net_final, axis=3), axis=3)
+        _, H, W, _ = tf.shape(net_final)
+        net_final = tf.reshape(net_final, (H, W, B, C))
+        net_final = tf.transpose(net_final, perm=[2,0,1,3])
 
         return net_final
 
+
+
+if __name__ == '__main__':
+    import numpy as np
+    np.random.seed(0)
+    image = np.random.rand(8, 256, 26, 26)
+    template = np.random.rand(8, 256, 4, 4)
+
+    image_p = np.transpose(image, axes=[0,2,3,1])
+    template_p = np.transpose(template, axes=[0,2,3,1])
+    x = tf.constant(image_p)
+    z = tf.constant(template_p)
+
+    out = xcorr_depthwise(x, z, name='xor')
 
