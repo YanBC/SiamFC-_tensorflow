@@ -29,9 +29,10 @@ def denseboxhead(input_cls, input_reg):
     output_bbox = input_reg
 
     with tf.variable_scope('DenseBox'):
+        bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
+        si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32) 
+        
         with tf.variable_scope('constants'):
-            bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
-            si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32)
             total_stride = constant(float(TOTALSTRIDE))
             fm_ctr = get_xy_ctr(SCORESIZE, SCOREOFFSET, TOTALSTRIDE)
 
