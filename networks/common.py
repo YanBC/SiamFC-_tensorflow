@@ -9,13 +9,13 @@ from tensorflow.compat.v1.initializers import he_normal
 
 
 def conv_bn_relu(input_t,
-                 out_channel,
-                 name,
-                 strides=1,
-                 ksize=3,
-                 has_bn=True,
-                 has_relu=True,
-                 has_bias=True):
+                out_channel,
+                name,
+                strides=1,
+                ksize=3,
+                has_bn=True,
+                has_relu=True,
+                has_bias=True):
     
     with tf.variable_scope(name, initializer=he_normal(), reuse=tf.compat.v1.AUTO_REUSE):
         in_channel = input_t.shape[3]
@@ -39,20 +39,28 @@ def conv_bn_relu(input_t,
                                 name='variances',
                                 shape=[out_channel,],
                                 trainable=True)
+                bn_offset = get_variable(
+                                name='offset',
+                                shape=[out_channel,],
+                                trainable=True)
+                bn_scale = get_variable(
+                                name='scale',
+                                shape=[out_channel,],
+                                trainable=True)
 
         output_t = conv2d(input_t, 
-                          filter=conv_weights,
-                          strides=strides,
-                          padding='VALID',
-                          name='conv')
+                        filter=conv_weights,
+                        strides=strides,
+                        padding='VALID',
+                        name='conv')
         if has_bias:
             output_t = bias_add(output_t, conv_bias, name='biasadd')
         if has_bn:
             output_t = batch_normalization(output_t,
                                            mean=bn_means,
                                            variance=bn_variances,
-                                           offset=None,
-                                           scale=None,
+                                           offset=bn_offset,
+                                           scale=bn_scale,
                                            variance_epsilon=1e-05,
                                            name='bn')
         if has_relu:
@@ -66,9 +74,6 @@ def conv_bn_relu(input_t,
 
 
 def xcorr_depthwise(x, kernel, name):
-    '''
-    borrow from https://github.com/torrvision/siamfc-tf/blob/master/src/siamese.py
-    '''
     with tf.variable_scope(name):
         net_z = tf.transpose(kernel, perm=[1,2,0,3])
         net_x = tf.transpose(x, perm=[1,2,0,3])
