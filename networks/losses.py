@@ -17,7 +17,7 @@ def safelog(x):
 ###############################
 # loss for classification
 ###############################
-class sigmoid_ce_retina:
+class Sigmoid_ce_retina:
     def __init__(self, weight=1.0, alpha=0.25, gamma=2.0):
         self.weight = weight
         self.alpha = alpha
@@ -37,7 +37,7 @@ class sigmoid_ce_retina:
 ###############################
 # loss for quality assessment
 ###############################
-class sigmoid_ce_centerness:
+class Sigmoid_ce_centerness:
     def __init__(self, weight=1.0):
         self.weight = weight
 
@@ -60,7 +60,7 @@ class sigmoid_ce_centerness:
 ###############################
 # loss for bbox regression
 ###############################
-class iou_loss:
+class Iou_loss:
     def __init__(self, weight=3.0):
         self.weight = weight
 
@@ -112,9 +112,9 @@ if __name__ == '__main__':
     gt_reg = tf.constant(np.random.rand(B, HW, 4))
 
 
-    cal_cls = sigmoid_ce_retina(alpha=0.5, gamma=0.0)
-    cal_ctr = sigmoid_ce_centerness()
-    cal_reg = iou_loss()
+    cal_cls = Sigmoid_ce_retina(alpha=0.5, gamma=0.0)
+    cal_ctr = Sigmoid_ce_centerness()
+    cal_reg = Iou_loss()
 
     loss_cls = cal_cls(pred_cls, gt_cls)
     loss_ctr = cal_ctr(pred_ctr, gt_ctr)
