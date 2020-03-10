@@ -29,7 +29,7 @@ class Data:
 		self.coors = coors
 
 
-class Sequence_data(list):
+class Sequence_Data(list):
 	'''
 	this class holds data for a whole video clip
 	'''
@@ -44,7 +44,7 @@ class Sequence_data(list):
 #########################
 
 
-class Base_dataset:
+class Base_Dataset:
 	'''
 	base class for all datasets
 
@@ -57,7 +57,7 @@ class Base_dataset:
 		maximum interval between images for them to be 
 		considered as a positive pair
 
-	sequence_datas: list of Sequence_data
+	sequence_datas: list of Sequence_Data
 		the list of video clips
 
 	sequence_ids: list of int
@@ -110,6 +110,12 @@ class Base_dataset:
 			if chr(ch) == 'q':
 				break
 
+	def shuffle(self, rng):
+		if self.sequence_datas is None:
+			print('You have to load squence first')
+			return False
+		rng.shuffle(self.sequence_ids)
+		return True
 
 
 	##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -128,10 +134,10 @@ class Base_dataset:
 
 
 
-class GOT10k_dataset(Base_dataset):
+class GOT10k_Dataset(Base_Dataset):
 
 	def load_sequence(self):
-		print('''GOT10k_dataset: loading data...''')
+		print('''GOT10k_Dataset: loading data...''')
 		listfile='list.txt'
 		with open(os.path.join(self.dir, listfile)) as f:
 			videoDirs = sorted([x.strip() for x in f.readlines()])
@@ -144,7 +150,7 @@ class GOT10k_dataset(Base_dataset):
 				annos = [x.strip() for x in f.readlines()]
 			assert len(annos) == len(imageFiles)
 
-			sequence = Sequence_data(videoDir)
+			sequence = Sequence_Data(videoDir)
 
 			for i in range(len(annos)):
 				imageFile = imageFiles[i]
@@ -164,7 +170,7 @@ class GOT10k_dataset(Base_dataset):
 		return True
 
 	def load_sequence_from_file(self, srcPath):
-		print('''GOT10k_dataset: loading data...''')
+		print('''GOT10k_Dataset: loading data...''')
 		with open(srcPath, 'br') as f:
 			self.sequence_datas = pickle.load(f)
 		self.sequence_ids = [x for x in range(len(self.sequence_datas))]
@@ -172,30 +178,45 @@ class GOT10k_dataset(Base_dataset):
 		return True
 
 	def save_sequence_to_file(self, desName='got10k.pkl'):
-		print('''GOT10k_dataset: saving data...''')
+		print('''GOT10k_Dataset: saving data...''')
 		if self.sequence_datas is None:
+			print('You have to load squence first')
 			return False
 		desPath = os.path.join(self.storage, desName)
 		with open(desPath, 'bw') as f:
 			pickle.dump(self.sequence_datas, f)
-		print('''GOT10k_dataset: saving data...''')
+		print('''finish saving ''')
 		return True
 
 
 
 
+# # test GOT10k
+# if __name__ == '__main__':
+# 	got_path = './datasets/GOT10k/train_data/'
+# 	dataName = 'got10k.pkl'
+
+# 	got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+# 	got_dataset.load_sequence()
+# 	got_dataset.save_sequence_to_file(desName=dataName)
+# 	del got_dataset
+
+# 	got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+# 	got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
+# 	got_dataset.show_image()
 
 
-# test GOT10k
-if __name__ == '__main__':
-	got_path = './datasets/GOT10k/train_data/'
-	dataName = 'got10k.pkl'
 
-	got_dataset = GOT10k_dataset(got_path, positive_interval=100)
-	got_dataset.load_sequence()
-	got_dataset.save_sequence_to_file(desName=dataName)
-	del got_dataset
 
-	got_dataset = GOT10k_dataset(got_path, positive_interval=100)
-	got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
-	got_dataset.show_image()
+#########################
+# formater classes
+#########################
+
+
+
+
+
+
+#########################
+# sampler classes
+#########################

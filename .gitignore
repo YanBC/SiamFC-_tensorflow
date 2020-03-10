@@ -160,4 +160,5 @@ references/
 temp/
 pytorch2tf/
 images_and_videos/
-sequenced_datasets
+sequenced_datasets/
+classification_datasets/
