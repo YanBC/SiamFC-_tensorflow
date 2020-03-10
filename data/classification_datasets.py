@@ -133,18 +133,17 @@ class Imagenet2012(Classification_Dataset_Base):
 
     def load_data(self):
         print('''Imagenet2012: loading data...''')
-        # args = []
-        # for dirname in os.listdir(self.annoDir):
-        #     for xmlname in os.listdir(os.path.join(self.annoDir, dirname)):
-        #         args.append((dirname, xmlname))
+        args = []
+        for dirname in os.listdir(self.annoDir):
+            for xmlname in os.listdir(os.path.join(self.annoDir, dirname)):
+                args.append((dirname, xmlname))
+        with md.Pool(processes=8) as p:
+            data_list = p.map(self._read_anno, args)
 
-        # with md.Pool(processes=8) as p:
-        #     data_list = p.map(self._read_anno, args)
         # with open('./temp/annos.pkl', 'bw') as f:
         #     pickle.dump(data_list, f)
-
-        with open('./temp/annos.pkl', 'br') as f:
-            data_list = pickle.load(f)
+        # with open('./temp/annos.pkl', 'br') as f:
+        #     data_list = pickle.load(f)
 
         label_list = sorted(list(os.listdir(self.imageDir)))
         self.label_dict = dict()
@@ -201,18 +200,18 @@ class Imagenet2012(Classification_Dataset_Base):
 
 
 
-# test Imagenet2012
-if __name__ == '__main__':
-    imagenet_dir = './datasets/imagenet'
-    dataName = 'imagenet2012.pkl'
-    # imagenet_dataset = Imagenet2012(imagenet_dir)
-    # imagenet_dataset.load_data()
-    # imagenet_dataset.save_data_to_file(desName=dataName)
-    # del imagenet_dataset
+# # test Imagenet2012
+# if __name__ == '__main__':
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012.pkl'
+#     # imagenet_dataset = Imagenet2012(imagenet_dir)
+#     # imagenet_dataset.load_data()
+#     # imagenet_dataset.save_data_to_file(desName=dataName)
+#     # del imagenet_dataset
 
-    imagenet_dataset = Imagenet2012(imagenet_dir)
-    imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
-    imagenet_dataset.show_image(randomly=True)
+#     imagenet_dataset = Imagenet2012(imagenet_dir)
+#     imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+#     imagenet_dataset.show_image(randomly=True)
 
 
 
