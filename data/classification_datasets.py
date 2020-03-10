@@ -5,6 +5,7 @@ from random import shuffle
 import cv2 as cv
 import numpy as np
 import multiprocessing.dummy as md
+import multiprocessing as mp
 
 
 #########################
@@ -164,7 +165,7 @@ class Imagenet2012(Classification_Dataset_Base):
     def load_data_from_file(self, srcPath):
         print('''Imagenet2012: loading data from file...''')
         with open(srcPath, 'br') as f:
-            self.data, self.label_dict = pickle.load(f)
+            self.data, self.label_dict, self._channel_mean = pickle.load(f)
         self.data_ids = [x for x in range(len(self.data))]
         print('''finish loading''')
         return True
@@ -176,27 +177,41 @@ class Imagenet2012(Classification_Dataset_Base):
             return False
         desPath = os.path.join(self.storage, desName)
         with open(desPath, 'bw') as f:
-            pickle.dump((self.data, self.label_dict), f)
+            channel_mean = self.channel_mean
+            pickle.dump((self.data, self.label_dict, channel_mean), f)
         print('''finish saving''')
         return True
 
-    def cal_mean(self):
-        if not self.channel_mean is None:
-            return self.channel_mean
+    def _cal_mean(self, imagePath):
+        image = cv.imread(imagePath)
+        if image is None:
+            print(f'None: {imagePath}')
+            return np.array([0.,0.,0.])
+        return np.mean(image, axis=(0,1))
+
+    @property
+    def channel_mean(self):
+        if hasattr(self, '_channel_mean'):
+            return self._channel_mean
         else:
             if self.data is None:
                 print('You have to load data first')
-                return np.array([-1, -1, -1])
+                return np.array([-1., -1., -1.])
 
-            data_mean_sum = np.array([0,0,0])
-            for data in self.data:
-                imagePath = os.path.join(self.imageDir, data.imagePath)
-                image = cv.imread(imagePath)
-                data_mean_sum += np.mean(image, axis=(0,1))
+            # data_mean_sum = np.array([0.,0.,0.])
+            # for data in self.data:
+            #     imagePath = os.path.join(self.imageDir, data.imagePath)
+            #     image = cv.imread(imagePath)
+            #     data_mean_sum += np.mean(image, axis=(0,1))
+            # channel_mean = data_mean_sum / len(self.data)
+            # self.channel_mean = channel_mean
+            # return self._channel_mean
 
-            channel_mean = data_mean_sum / len(self.data)
-            self.channel_mean = channel_mean
-            return channel_mean
+            imagePaths = [os.path.join(self.imageDir, data.imagePath) for data in self.data]
+            with mp.Pool(processes=16) as p:
+                data_means = p.map(self._cal_mean, imagePaths)
+            self._channel_mean = np.stack(data_means).mean(axis=0)
+            return self._channel_mean
 
 
 
@@ -244,11 +259,12 @@ class Alexnet_Formater:
         self.channel_mean = channel_mean
         self.num_cls = num_cls
 
-    def __call__(image, coors, label):
+    def __call__(self, image, coors, label):
         left, top, right, bottom = coors
         object_image = image[top:bottom, left:right, :]
         scaled_image = self._rescale(object_image)
-        crop_image = self._crop_centre(scaled_image)
+        scaled_image_h, scaled_image_w, _ = scaled_image.shape
+        crop_image = self._crop_centre(scaled_image, scaled_image_w//2, scaled_image_h//2)
         mean_image = self._subtract_mean(crop_image)
         final_image = np.expand_dims(mean_image, axis=0)
 
@@ -256,7 +272,7 @@ class Alexnet_Formater:
 
         return {'x': final_image, 'y': final_label}
 
-    def _rescale(img):
+    def _rescale(self, img):
         h, w, _ = img.shape
         if h < w:
             shorter_side = h
@@ -269,10 +285,10 @@ class Alexnet_Formater:
             target_h = scale * h
             target_w = self.target_size
 
-        scaled_img = cv.resize(img, dsize=(target_w, target_h))
+        scaled_img = cv.resize(img, dsize=(int(target_w), int(target_h)))
         return scaled_img
 
-    def _crop_centre(img, c_x, c_y):
+    def _crop_centre(self, img, c_x, c_y):
         h, w, _ = img.shape
 
         half_size = self.target_size // 2
@@ -283,14 +299,14 @@ class Alexnet_Formater:
 
         return crop_img
 
-    def _subtract_mean(img):
+    def _subtract_mean(self, img):
         h, w, c = img.shape
         assert c == 3
         return img - self.channel_mean
 
-    def _one_hot(c):
+    def _one_hot(self, c):
         base = np.zeros(shape=(1, self.num_cls))
-        base[c] = 1
+        base[0, c] = 1
         return base
 
 
@@ -314,7 +330,7 @@ class Alexnet_Sampler:
         Y = []
         for index in indice:
             data = self.dataset.data[all_data_ids[index]]
-            imagePath = data.imagePath
+            imagePath = os.path.join(self.dataset.imageDir, data.imagePath)
             image = cv.imread(imagePath)
             coors = data.coors
             label = data.label
@@ -323,5 +339,47 @@ class Alexnet_Sampler:
             X.append(formated['x'])
             Y.append(formated['y'])
 
+        X = np.concatenate(X)
+        Y = np.concatenate(Y)
         return {'X': X, 'Y':Y}
 
+
+
+# test sampler
+if __name__ == '__main__':
+    imagenet_dir = './datasets/imagenet'
+    dataName = 'imagenet2012.pkl'
+    dataset = Imagenet2012(imagenet_dir)
+    dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
+    # dataset._channel_mean = np.array([137.316896  , 148.41162667, 107.76211733])
+    # dataset.save_data_to_file(dataName)
+
+    input_size = 224
+    channel_mean = dataset.channel_mean
+    num_cls = 1000
+    formater = Alexnet_Formater(input_size, channel_mean, num_cls)
+
+    rng = np.random.RandomState()
+    batchsize = 1
+    sampler = Alexnet_Sampler(dataset, formater, batchsize)
+
+    ch = ord(' ')
+    while True:
+        train_data = sampler.sample_one(rng)
+        image = train_data['X'][0]
+        label = train_data['Y'][0]
+        if chr(ch) == 'n':
+            if label.argmax() != target_label:
+                continue
+        image += dataset.channel_mean
+        image = image.astype(np.uint8)
+        print(image.shape)
+
+        windowName = 'show'
+        cv.namedWindow(windowName, cv.WINDOW_NORMAL)
+        cv.imshow(windowName, image)
+        ch = cv.waitKey()
+        if chr(ch) == 'q':
+            break
+        elif chr(ch) == 'n':
+            target_label = label.argmax()
