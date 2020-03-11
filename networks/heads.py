@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import get_variable, constant
 
 from .common import conv_bn_relu
