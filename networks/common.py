@@ -7,6 +7,7 @@ from tensorflow.compat.v1.nn import depthwise_conv2d
 from tensorflow.compat.v1 import get_variable
 from tensorflow.compat.v1.initializers import he_normal
 
+from tensorflow.compat.v1.layers import BatchNormalization
 
 
 def conv_bn_relu(input_t,
@@ -123,14 +124,32 @@ class Conv_Bn_Relu(tf.Module):
                 if self.has_bias:
                     self.conv_bias = get_variable(name='bias', shape=[out_channel,], trainable=True)
 
+                # borrow from https://github.com/udacity/deep-learning/blob/master/batch-norm/Batch_Normalization_Solutions.ipynb
                 if self.has_bn:
-                    self.bn_means = get_variable(name='means', shape=[out_channel,], trainable=True)
-                    self.bn_variances = get_variable(name='variances', shape=[out_channel,], trainable=True)
-                    self.bn_offset = get_variable(name='offset', shape=[out_channel,], trainable=True)
-                    self.bn_scale = get_variable(name='scale', shape=[out_channel,], trainable=True)
+                    self.epsilon = 1e-3
+                    self.gamma = get_variable(name='means', initializer=tf.ones([out_channel,]), trainable=True)
+                    self.beta = get_variable(name='variances', initializer=tf.zeros([out_channel,]), trainable=True)
+                    self.pop_mean = get_variable(name='offset', initializer=tf.zeros([out_channel,]), trainable=False)
+                    self.pop_variance = get_variable(name='scale', initializer=tf.ones([out_channel,]), trainable=False)
 
     @tf.Module.with_name_scope
-    def __call__(self, input_t):
+    def _batch_norm_training(self, input_t):
+        batch_mean, batch_variance = tf.nn.moments(input_t, [0,1,2], keep_dims=False)
+
+        decay = 0.99
+        train_mean = tf.assign(self.pop_mean, self.pop_mean * decay + batch_mean * (1 - decay))
+        train_variance = tf.assign(self.pop_variance, self.pop_variance * decay + batch_variance * (1 - decay))
+
+        with tf.control_dependencies([train_mean, train_variance]):
+            return tf.nn.batch_normalization(input_t, batch_mean, batch_variance, self.beta, self.gamma, self.epsilon)
+
+    @tf.Module.with_name_scope
+    def _batch_norm_inference(self, input_t):
+        return tf.nn.batch_normalization(input_t, self.pop_mean, self.pop_variance, self.beta, self.gamma, self.epsilon)
+
+
+    @tf.Module.with_name_scope
+    def __call__(self, input_t, is_training=True):
         assert input_t.shape[3] == self.in_channel
 
         output_t = conv2d(input_t, filter=self.conv_weights, strides=self.strides, padding='VALID', name='conv')
@@ -139,7 +158,9 @@ class Conv_Bn_Relu(tf.Module):
             output_t = bias_add(output_t, self.conv_bias, name='biasadd')
 
         if self.has_bn:
-            output_t = batch_normalization(output_t, mean=self.bn_means, variance=self.bn_variances, offset=self.bn_offset, scale=self.bn_scale, variance_epsilon=1e-05, name='bn')
+            output_t = tf.cond(tf.constant(is_training, dtype=tf.bool), lambda: self._batch_norm_training(output_t), lambda: self._batch_norm_inference(output_t))
+            # # output_t = batch_normalization(output_t, mean=self.bn_means, variance=self.bn_variances, offset=self.bn_offset, scale=self.bn_scale, variance_epsilon=1e-05, name='bn')
+            # self.batchnorm(output_t)
 
         if self.has_relu:
             output_t = relu(output_t, name='relu')

@@ -93,4 +93,16 @@ class AlexNet(tf.Module):
 
         return output_t
 
+    @property
+    def num_trainable_parameters(self):
+        if hasattr(self, '_num_trainable_parameters'):
+            return self._num_trainable_parameters
+        else:
+            total_num = 0
+            for varibale in self.trainable_variables:
+                total_num += varibale.shape.num_elements()
+            self._num_trainable_parameters = total_num
+            return total_num
+    
+
 

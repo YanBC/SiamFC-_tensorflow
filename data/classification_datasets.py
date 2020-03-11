@@ -339,8 +339,8 @@ class Alexnet_Sampler:
             X.append(formated['x'])
             Y.append(formated['y'])
 
-        X = np.concatenate(X)
-        Y = np.concatenate(Y)
+        X = np.concatenate(X).astype(np.float32)
+        Y = np.concatenate(Y).astype(np.float32)
         return {'X': X, 'Y':Y}
 
 
