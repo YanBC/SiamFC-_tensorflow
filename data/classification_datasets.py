@@ -285,7 +285,7 @@ class Alexnet_Formater:
             target_h = scale * h
             target_w = self.target_size
 
-        scaled_img = cv.resize(img, dsize=(int(target_w), int(target_h)))
+        scaled_img = cv.resize(img, dsize=(int(np.ceil(target_w)), int(np.ceil(target_h))))
         return scaled_img
 
     def _crop_centre(self, img, c_x, c_y):
@@ -341,6 +341,13 @@ class Alexnet_Sampler:
 
         X = np.concatenate(X).astype(np.float32)
         Y = np.concatenate(Y).astype(np.float32)
+        # try:
+        #     X = np.concatenate(X).astype(np.float32)
+        #     Y = np.concatenate(Y).astype(np.float32)
+        # except ValueError:
+        #     for i, x in enumerate(X):
+        #         if x.shape != (1,224,224,3):
+        #             print(i)
         return {'X': X, 'Y':Y}
 
 
@@ -359,7 +366,7 @@ if __name__ == '__main__':
     num_cls = 1000
     formater = Alexnet_Formater(input_size, channel_mean, num_cls)
 
-    rng = np.random.RandomState()
+    rng = np.random.RandomState(seed=0)
     batchsize = 1
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
@@ -383,3 +390,25 @@ if __name__ == '__main__':
             break
         elif chr(ch) == 'n':
             target_label = label.argmax()
+
+
+
+# # test formater
+# if __name__ == '__main__':
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012.pkl'
+#     dataset = Imagenet2012(imagenet_dir)
+#     dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
+
+#     input_size = 224
+#     channel_mean = dataset.channel_mean
+#     num_cls = 1000
+#     formater = Alexnet_Formater(input_size, channel_mean, num_cls)
+
+#     data = dataset.data[dataset.data_ids[425858]]
+#     imagePath = os.path.join(dataset.imageDir, data.imagePath)
+#     image = cv.imread(imagePath)
+#     coors = data.coors
+#     label = data.label
+
+#     formated = formater(image, coors, label)
