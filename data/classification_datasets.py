@@ -332,13 +332,6 @@ class Alexnet_Sampler:
 
         X = np.concatenate(X).astype(np.float32)
         Y = np.concatenate(Y).astype(np.float32)
-        # try:
-        #     X = np.concatenate(X).astype(np.float32)
-        #     Y = np.concatenate(Y).astype(np.float32)
-        # except ValueError:
-        #     for i, x in enumerate(X):
-        #         if x.shape != (1,224,224,3):
-        #             print(i)
         return {'X': X, 'Y':Y}
 
 

@@ -1,6 +1,7 @@
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1.train import AdamOptimizer
 import os
+import signal
 import sys
 sys.path.append('.')
 
@@ -12,6 +13,12 @@ from data.dataloader import DataLoader
 def classification_loss(y_true, y_pred):
     loss = -1 * y_true * tf.log(y_pred)
     return tf.math.reduce_sum(loss) / tf.cast(y_true.shape[0], tf.float32)
+
+def SIGINT_handler(signum, frame):
+    print(f'Sigal #{signum} receive. Exiting...')
+    global datagen
+    datagen.shutdown()
+    exit(0)
 
 
 if __name__ == '__main__':
@@ -30,6 +37,7 @@ if __name__ == '__main__':
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
     datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
+    signal.signal(signal.SIGINT, SIGINT_handler)
 
     save_graph_path = './temp/alexnet.pb'
     graph = tf.Graph()
@@ -66,6 +74,7 @@ if __name__ == '__main__':
                     last_interval = time.time()
             with open(save_graph_path, 'wb') as f:
                 f.write(graph.as_graph_def().SerializeToString())
+            print(f"Save model to {save_graph_path}")
 
         # train_job(lr=0.001, total_steps=300)
         train_job(lr=0.001, total_steps=5000, report_interval=500)

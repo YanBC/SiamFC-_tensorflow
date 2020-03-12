@@ -7,13 +7,17 @@ def create_worker(index, sampler, queue, lock, exit_event):
 
     while not exit_event.is_set():
         data = sampler.sample_one(rng)
-        if lock.acquire(timeout=2):
-            try:
-                queue.put(data, timeout=2)
-            except:
-                pass
-            finally:
-                lock.release()
+        # if lock.acquire(timeout=2):
+        #     try:
+        #         queue.put(data, timeout=2)
+        #     except:
+        #         pass
+        #     finally:
+        #         lock.release()
+        try:
+            queue.put(data, timeout=2)
+        except:
+            pass
 
 
 
@@ -32,6 +36,10 @@ class DataLoader:
 
     def shutdown(self):
         self.exit.set()
+        for worker in self.workers:
+            worker.terminate()
+        for worker in self.workers:
+            worker.join()
         return True
 
 
@@ -57,7 +65,7 @@ if __name__ == '__main__':
     batchsize = 1
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
-    datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
+    datagen = DataLoader(sampler, num_worker=2, buffer_size=16)
 
     ch = ord(' ')
     while True:
