@@ -29,10 +29,9 @@ if __name__ == '__main__':
     batchsize = 32
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
-    datagen = DataLoader(sampler)
+    datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
 
-    total_steps = 100
-    learning_rate = 0.001
+    save_graph_path = './temp/alexnet.pb'
     graph = tf.Graph()
     with graph.as_default():
         with tf.name_scope('Input'):
@@ -42,22 +41,38 @@ if __name__ == '__main__':
         network = AlexNet()
         output_t = network(img_t)
         loss_t = classification_loss(y_true_t, output_t)
-
-        optimizer = AdamOptimizer(learning_rate=learning_rate)
-        op_minimize = optimizer.minimize(loss_t)
-
         init_op = tf.global_variables_initializer()
 
         sess = tf.Session()
         sess.run(init_op)
-        
-        for step in range(total_steps):
-            data = datagen.load_one()
-            loss, result = sess.run([loss_t, op_minimize], feed_dict={img_t: data['X'], y_true_t: data['Y']})
-            
-            print(loss)
-            print(result)
 
-        datagen.shutdown()
+        def train_job(lr, total_steps, report_interval=100):
+            import time
+            last_interval = None
+
+            optimizer = AdamOptimizer(learning_rate=lr)
+            op_minimize = optimizer.minimize(loss_t)
+            sess.run(tf.variables_initializer(optimizer.variables()))
+            print(f'Setting learning rate to be {lr} for the next {total_steps} steps...')
+            for step in range(total_steps):
+                data = datagen.load_one()
+                loss, result = sess.run([loss_t, op_minimize], feed_dict={img_t: data['X'], y_true_t: data['Y']})
+                if step % report_interval == 0:
+                    if last_interval is None:
+                        print('loss: %0.3f' % (loss))
+                    else:
+                        now = time.time()
+                        print('loss: %0.3f    time: %0.3f steps per second' % (loss, report_interval/(now-last_interval)))
+                    last_interval = time.time()
+
+        # train_job(lr=0.001, total_steps=300)
+        train_job(lr=0.001, total_steps=5000, report_interval=500)
+        train_job(lr=0.0003, total_steps=50000, report_interval=500)
+        train_job(lr=0.0001, total_steps=100000, report_interval=500)
+
+    with open(save_graph_path, 'wb') as f:
+        f.write(graph.as_graph_def().SerializeToString())
+                
+    datagen.shutdown()
 
 
