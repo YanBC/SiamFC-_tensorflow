@@ -37,17 +37,49 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    class Sample:
-        def __init__(self):
-            self.numbers = [x for x in range(10)]
+    import os
+    import cv2 as cv
+    import sys
+    sys.path.append('.')
+    from data.classification_datasets import Data, Imagenet2012, Alexnet_Formater, Alexnet_Sampler
 
-        def sample_one(self, rng):
-            return rng.choice(self.numbers)
+    imagenet_dir = './datasets/imagenet'
+    dataName = 'imagenet2012.pkl'
+    dataset = Imagenet2012(imagenet_dir)
+    dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
 
-    s = Sample()
-    d = DataLoader(s)
+    input_size = 224
+    input_channel = 3
+    channel_mean = dataset.channel_mean
+    num_cls = 1000
+    formater = Alexnet_Formater(input_size, channel_mean, num_cls)
 
-    for i in range(10):
-        print(d.load_one())
+    batchsize = 1
+    sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
-    d.shutdown()
+    datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
+
+    ch = ord(' ')
+    while True:
+        train_data = datagen.load_one()
+        image = train_data['X'][0]
+        label = train_data['Y'][0]
+        if chr(ch) == 'n':
+            if label.argmax() != target_label:
+                continue
+        image += dataset.channel_mean
+        image = image.astype(np.uint8)
+        print(image.shape)
+
+        windowName = 'show'
+        cv.namedWindow(windowName, cv.WINDOW_NORMAL)
+        cv.imshow(windowName, image)
+        ch = cv.waitKey()
+        if chr(ch) == 'q':
+            break
+        elif chr(ch) == 'n':
+            target_label = label.argmax()
+
+    tmp = datagen.shutdown()
+
+    a = 3

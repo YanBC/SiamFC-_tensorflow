@@ -198,15 +198,6 @@ class Imagenet2012(Classification_Dataset_Base):
                 print('You have to load data first')
                 return np.array([-1., -1., -1.])
 
-            # data_mean_sum = np.array([0.,0.,0.])
-            # for data in self.data:
-            #     imagePath = os.path.join(self.imageDir, data.imagePath)
-            #     image = cv.imread(imagePath)
-            #     data_mean_sum += np.mean(image, axis=(0,1))
-            # channel_mean = data_mean_sum / len(self.data)
-            # self.channel_mean = channel_mean
-            # return self._channel_mean
-
             imagePaths = [os.path.join(self.imageDir, data.imagePath) for data in self.data]
             with mp.Pool(processes=16) as p:
                 data_means = p.map(self._cal_mean, imagePaths)
@@ -261,7 +252,7 @@ class Alexnet_Formater:
 
     def __call__(self, image, coors, label):
         left, top, right, bottom = coors
-        object_image = image[top:bottom, left:right, :]
+        object_image = image[top:bottom+1, left:right+1, :]
         scaled_image = self._rescale(object_image)
         scaled_image_h, scaled_image_w, _ = scaled_image.shape
         crop_image = self._crop_centre(scaled_image, scaled_image_w//2, scaled_image_h//2)
@@ -358,8 +349,6 @@ if __name__ == '__main__':
     dataName = 'imagenet2012.pkl'
     dataset = Imagenet2012(imagenet_dir)
     dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
-    # dataset._channel_mean = np.array([137.316896  , 148.41162667, 107.76211733])
-    # dataset.save_data_to_file(dataName)
 
     input_size = 224
     channel_mean = dataset.channel_mean

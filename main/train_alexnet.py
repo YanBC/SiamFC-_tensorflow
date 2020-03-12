@@ -64,15 +64,14 @@ if __name__ == '__main__':
                         now = time.time()
                         print('loss: %0.3f    time: %0.3f steps per second' % (loss, report_interval/(now-last_interval)))
                     last_interval = time.time()
+            with open(save_graph_path, 'wb') as f:
+                f.write(graph.as_graph_def().SerializeToString())
 
         # train_job(lr=0.001, total_steps=300)
         train_job(lr=0.001, total_steps=5000, report_interval=500)
         train_job(lr=0.0003, total_steps=50000, report_interval=500)
         train_job(lr=0.0001, total_steps=100000, report_interval=500)
 
-    with open(save_graph_path, 'wb') as f:
-        f.write(graph.as_graph_def().SerializeToString())
-                
     datagen.shutdown()
 
 
