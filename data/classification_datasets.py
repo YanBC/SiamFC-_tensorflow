@@ -133,7 +133,13 @@ class Imagenet2012(Classification_Dataset_Base):
         top = int(obj['bndbox']['ymin'])
         right = int(obj['bndbox']['xmax'])
         bottom = int(obj['bndbox']['ymax'])
-        return (imagepath, [left, top, right, bottom], label, [width, height])
+
+        image = cv.imread(os.path.join(self.imageDir, imagepath))
+        h, w, c = image.shape
+        if h != height or w != width or c != 3:
+            return None
+        else:
+            return (imagepath, [left, top, right, bottom], label, [width, height])
 
     def load_data(self):
         print('''Imagenet2012: loading data...''')
@@ -156,6 +162,8 @@ class Imagenet2012(Classification_Dataset_Base):
 
         self.data = []
         for d in data_list:
+            if d is None:
+                continue
             imagePath = d[0]
             coors = d[1]
             label = self.label_dict[d[2]]
@@ -210,18 +218,19 @@ class Imagenet2012(Classification_Dataset_Base):
 
 
 
-# # test Imagenet2012
-# if __name__ == '__main__':
-#     imagenet_dir = './datasets/imagenet'
-#     dataName = 'imagenet2012.pkl'
-#     # imagenet_dataset = Imagenet2012(imagenet_dir)
-#     # imagenet_dataset.load_data()
-#     # imagenet_dataset.save_data_to_file(desName=dataName)
-#     # del imagenet_dataset
+# test Imagenet2012
+if __name__ == '__main__':
+    imagenet_dir = './datasets/imagenet'
+    dataName = 'imagenet2012_filtered.pkl'
+    # imagenet_dataset = Imagenet2012(imagenet_dir)
+    # imagenet_dataset.load_data()
+    # imagenet_dataset.save_data_to_file(desName=dataName)
+    # del imagenet_dataset
 
-#     imagenet_dataset = Imagenet2012(imagenet_dir)
-#     imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
-#     imagenet_dataset.show_image(randomly=True)
+    imagenet_dataset = Imagenet2012(imagenet_dir)
+    imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+    print(imagenet_dataset.size)
+    imagenet_dataset.show_image(randomly=True)
 
 
 
@@ -329,10 +338,10 @@ class Alexnet_Sampler:
             image = cv.imread(imagePath)
             coors = data.coors
             label = data.label
-            width, height = data.size
-            image_height, image_width, _ = image.shape
-            if width != image_width or height != image_height:
-                image.transpose([1,0,2])
+            # width, height = data.size
+            # image_height, image_width, _ = image.shape
+            # if width != image_width or height != image_height:
+            #     image.transpose([1,0,2])
 
             formated = self.formater(image, coors, label)
             X.append(formated['x'])
@@ -344,42 +353,42 @@ class Alexnet_Sampler:
 
 
 
-# test sampler
-if __name__ == '__main__':
-    imagenet_dir = './datasets/imagenet'
-    dataName = 'imagenet2012.pkl'
-    dataset = Imagenet2012(imagenet_dir)
-    dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
+# # test sampler
+# if __name__ == '__main__':
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012.pkl'
+#     dataset = Imagenet2012(imagenet_dir)
+#     dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
 
-    input_size = 224
-    channel_mean = dataset.channel_mean
-    num_cls = 1000
-    formater = Alexnet_Formater(input_size, channel_mean, num_cls)
+#     input_size = 224
+#     channel_mean = dataset.channel_mean
+#     num_cls = 1000
+#     formater = Alexnet_Formater(input_size, channel_mean, num_cls)
 
-    rng = np.random.RandomState(seed=0)
-    batchsize = 1
-    sampler = Alexnet_Sampler(dataset, formater, batchsize)
+#     rng = np.random.RandomState(seed=0)
+#     batchsize = 1
+#     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
-    ch = ord(' ')
-    while True:
-        train_data = sampler.sample_one(rng)
-        image = train_data['X'][0]
-        label = train_data['Y'][0]
-        if chr(ch) == 'n':
-            if label.argmax() != target_label:
-                continue
-        image += dataset.channel_mean
-        image = image.astype(np.uint8)
-        print(image.shape)
+#     ch = ord(' ')
+#     while True:
+#         train_data = sampler.sample_one(rng)
+#         image = train_data['X'][0]
+#         label = train_data['Y'][0]
+#         if chr(ch) == 'n':
+#             if label.argmax() != target_label:
+#                 continue
+#         image += dataset.channel_mean
+#         image = image.astype(np.uint8)
+#         print(image.shape)
 
-        windowName = 'show'
-        cv.namedWindow(windowName, cv.WINDOW_NORMAL)
-        cv.imshow(windowName, image)
-        ch = cv.waitKey()
-        if chr(ch) == 'q':
-            break
-        elif chr(ch) == 'n':
-            target_label = label.argmax()
+#         windowName = 'show'
+#         cv.namedWindow(windowName, cv.WINDOW_NORMAL)
+#         cv.imshow(windowName, image)
+#         ch = cv.waitKey()
+#         if chr(ch) == 'q':
+#             break
+#         elif chr(ch) == 'n':
+#             target_label = label.argmax()
 
 
 
