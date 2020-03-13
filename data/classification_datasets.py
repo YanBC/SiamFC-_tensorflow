@@ -27,10 +27,11 @@ class Data:
         an interger defining the class
         of the object
     '''
-    def __init__(self, imagePath, coors, label):
+    def __init__(self, imagePath, coors, label, size):
         self.imagePath = imagePath
         self.coors = coors
         self.label = label
+        self.size = size
 
 
 #########################
@@ -123,6 +124,8 @@ class Imagenet2012(Classification_Dataset_Base):
 
         imagepath = os.path.join(dirname, imagename)
         label = dirname
+        width = int(annotation['annotation']['size']['width'])
+        height = int(annotation['annotation']['size']['height'])
         obj = annotation['annotation']['object']
         if isinstance(obj, list):
             obj = obj[0]
@@ -130,7 +133,7 @@ class Imagenet2012(Classification_Dataset_Base):
         top = int(obj['bndbox']['ymin'])
         right = int(obj['bndbox']['xmax'])
         bottom = int(obj['bndbox']['ymax'])
-        return (imagepath, [left, top, right, bottom], label)
+        return (imagepath, [left, top, right, bottom], label, [width, height])
 
     def load_data(self):
         print('''Imagenet2012: loading data...''')
@@ -156,7 +159,8 @@ class Imagenet2012(Classification_Dataset_Base):
             imagePath = d[0]
             coors = d[1]
             label = self.label_dict[d[2]]
-            self.data.append(Data(imagePath=imagePath, coors=coors, label=label))
+            size = d[3]
+            self.data.append(Data(imagePath=imagePath, coors=coors, label=label, size=size))
         self.data_ids = [x for x in range(len(self.data))]
 
         print('''finish loading''')
@@ -325,6 +329,10 @@ class Alexnet_Sampler:
             image = cv.imread(imagePath)
             coors = data.coors
             label = data.label
+            width, height = data.size
+            image_height, image_width, _ = image.shape
+            if width != image_width or height != image_height:
+                image.transpose([1,0,2])
 
             formated = self.formater(image, coors, label)
             X.append(formated['x'])

@@ -37,7 +37,7 @@ if __name__ == '__main__':
     batchsize = 16
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
-    datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
+    datagen = DataLoader(sampler, num_worker=16, buffer_size=64)
     signal.signal(signal.SIGINT, SIGINT_handler)
 
     save_graph_path = './temp/alexnet.pb'
