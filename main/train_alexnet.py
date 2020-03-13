@@ -2,6 +2,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1.train import AdamOptimizer
 import os
 import signal
+import numpy as np
 import sys
 sys.path.append('.')
 
@@ -33,13 +34,14 @@ if __name__ == '__main__':
     num_cls = 1000
     formater = Alexnet_Formater(input_size, channel_mean, num_cls)
 
-    batchsize = 32
+    batchsize = 16
     sampler = Alexnet_Sampler(dataset, formater, batchsize)
 
     datagen = DataLoader(sampler, num_worker=8, buffer_size=16)
     signal.signal(signal.SIGINT, SIGINT_handler)
 
     save_graph_path = './temp/alexnet.pb'
+    nan_graph_path = './temp/alexnet_nan.pb'
     graph = tf.Graph()
     with graph.as_default():
         with tf.name_scope('Input'):
@@ -65,6 +67,13 @@ if __name__ == '__main__':
             for step in range(total_steps):
                 data = datagen.load_one()
                 loss, result = sess.run([loss_t, op_minimize], feed_dict={img_t: data['X'], y_true_t: data['Y']})
+
+                if loss is np.nan:
+                    with open(nan_graph_path, 'wb') as f:
+                        f.write(graph.as_graph_def().SerializeToString())
+                    print(f"Save model to {nan_graph_path}")
+                    return False
+
                 if step % report_interval == 0:
                     if last_interval is None:
                         print('loss: %0.3f' % (loss))
@@ -72,14 +81,22 @@ if __name__ == '__main__':
                         now = time.time()
                         print('loss: %0.3f    time: %0.3f steps per second' % (loss, report_interval/(now-last_interval)))
                     last_interval = time.time()
+
             with open(save_graph_path, 'wb') as f:
                 f.write(graph.as_graph_def().SerializeToString())
             print(f"Save model to {save_graph_path}")
+            return True
 
-        # train_job(lr=0.001, total_steps=300)
-        train_job(lr=0.001, total_steps=5000, report_interval=500)
-        train_job(lr=0.0003, total_steps=50000, report_interval=500)
-        train_job(lr=0.0001, total_steps=100000, report_interval=500)
+        # train_job(lr=0.001, total_steps=5000, report_interval=500)
+        # train_job(lr=0.0003, total_steps=50000, report_interval=500)
+        # train_job(lr=0.0001, total_steps=100000, report_interval=500)
+
+        learning_rates = np.linspace(1e-7, 1e-3, 50)
+        for lr in learning_rates:
+            success = train_job(lr=lr, total_steps=3000, report_interval=500)
+            if not success:
+                print('Loss becomes nan. Exiting...')
+                break
 
     datagen.shutdown()
 
