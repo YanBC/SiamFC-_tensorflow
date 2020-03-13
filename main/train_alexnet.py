@@ -24,7 +24,7 @@ def SIGINT_handler(signum, frame):
 
 if __name__ == '__main__':
     imagenet_dir = './datasets/imagenet'
-    dataName = 'imagenet2012.pkl'
+    dataName = 'imagenet2012_filtered.pkl'
     dataset = Imagenet2012(imagenet_dir)
     dataset.load_data_from_file(os.path.join(dataset.storage, dataName))
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         sess = tf.Session()
         sess.run(init_op)
 
-        def train_job(lr, total_steps, report_interval=100, save_path=None):
+        def train_job(lr, total_steps, report_interval=100, save_name=None, log_file='./temp/alexnet_train.log'):
             import time
             last_interval = None
 
@@ -63,7 +63,9 @@ if __name__ == '__main__':
             optimizer = AdamOptimizer(learning_rate=lr)
             op_minimize = optimizer.minimize(loss_t)
             sess.run(tf.variables_initializer(optimizer.variables()))
-            print(f'Setting learning rate to be {lr} for the next {total_steps} steps...')
+            with open(log_file, 'a+') as log:
+                log.write(f'Setting learning rate to be {lr} for the next {total_steps} steps...\n')
+            # print(f'Setting learning rate to be {lr} for the next {total_steps} steps...')
             for step in range(total_steps):
                 data = datagen.load_one()
                 loss, result = sess.run([loss_t, op_minimize], feed_dict={img_t: data['X'], y_true_t: data['Y']})
@@ -72,26 +74,32 @@ if __name__ == '__main__':
                 if loss is np.nan:
                     with open(nan_graph_path, 'wb') as f:
                         f.write(graph.as_graph_def().SerializeToString())
-                    print(f"Save model to {nan_graph_path}")
+                    with open(log_file, 'a+') as log:
+                        log.write('Loss grows to nan\n')
+                        log.write(f'Save model to {nan_graph_path}\n')
+                    # print(f"Save model to {nan_graph_path}")
                     return False
 
                 if step % report_interval == 0 and len(losses) > 1:
                     if last_interval is None:
-                        print('loss: %0.3f' % (loss))
+                        pass
+                        # print('loss: %0.3f' % (loss))
                     else:
                         now = time.time()
-                        print('loss: %0.3f    time: %0.3f steps per second' % (np.array(losses).mean(), report_interval/(now-last_interval)))
+                        with open(log_file, 'a+') as log:
+                            log.write('loss: %0.3f    time: %0.3f steps per second\n' % (np.array(losses).mean(), report_interval/(now-last_interval)))
+                        # print('loss: %0.3f    time: %0.3f steps per second' % (np.array(losses).mean(), report_interval/(now-last_interval)))
+                        losses = []
                     last_interval = time.time()
 
-            if save_path is not None:
+            if save_name is not None:
+                save_path = save_name + f'_{np.round(loss, decimals=3)}.pb'
                 with open(save_path, 'wb') as f:
                     f.write(graph.as_graph_def().SerializeToString())
-                print(f"Save model to {save_path}")
+                with open(log_file, 'a+') as log:
+                    log.write(f'Save model to {save_path}\n')
+                # print(f"Save model to {save_path}")
             return True
-
-        # train_job(lr=0.001, total_steps=5000, report_interval=500)
-        # train_job(lr=0.0003, total_steps=50000, report_interval=500)
-        # train_job(lr=0.0001, total_steps=100000, report_interval=500)
 
         learning_rates = np.linspace(1e-7, 1e-4, 20)
         for i, lr in enumerate(learning_rates):
@@ -102,8 +110,7 @@ if __name__ == '__main__':
 
         learning_rates = np.linspace(1e-4, 1e-6, 50)
         for i, lr in enumerate(learning_rates):
-            model_path = os.path.join('./temp', f'alexnet_{i}_{lr}.pb')
-            success = train_job(lr=lr, total_steps=5000, report_interval=500, save_path=model_path)
+            success = train_job(lr=lr, total_steps=5000, report_interval=500, save_name=f'./temp/alexnet_{i}')
             if not success:
                 print('Loss becomes nan. Exiting...')
                 break
