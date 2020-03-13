@@ -40,7 +40,6 @@ if __name__ == '__main__':
     datagen = DataLoader(sampler, num_worker=16, buffer_size=64)
     signal.signal(signal.SIGINT, SIGINT_handler)
 
-    save_graph_path = './temp/alexnet.pb'
     nan_graph_path = './temp/alexnet_nan.pb'
     graph = tf.Graph()
     with graph.as_default():
@@ -56,10 +55,11 @@ if __name__ == '__main__':
         sess = tf.Session()
         sess.run(init_op)
 
-        def train_job(lr, total_steps, report_interval=100):
+        def train_job(lr, total_steps, report_interval=100, save_path=None):
             import time
             last_interval = None
 
+            losses = []
             optimizer = AdamOptimizer(learning_rate=lr)
             op_minimize = optimizer.minimize(loss_t)
             sess.run(tf.variables_initializer(optimizer.variables()))
@@ -67,6 +67,7 @@ if __name__ == '__main__':
             for step in range(total_steps):
                 data = datagen.load_one()
                 loss, result = sess.run([loss_t, op_minimize], feed_dict={img_t: data['X'], y_true_t: data['Y']})
+                losses.append(loss)
 
                 if loss is np.nan:
                     with open(nan_graph_path, 'wb') as f:
@@ -74,26 +75,35 @@ if __name__ == '__main__':
                     print(f"Save model to {nan_graph_path}")
                     return False
 
-                if step % report_interval == 0:
+                if step % report_interval == 0 and len(losses) > 1:
                     if last_interval is None:
                         print('loss: %0.3f' % (loss))
                     else:
                         now = time.time()
-                        print('loss: %0.3f    time: %0.3f steps per second' % (loss, report_interval/(now-last_interval)))
+                        print('loss: %0.3f    time: %0.3f steps per second' % (np.array(losses).mean(), report_interval/(now-last_interval)))
                     last_interval = time.time()
 
-            with open(save_graph_path, 'wb') as f:
-                f.write(graph.as_graph_def().SerializeToString())
-            print(f"Save model to {save_graph_path}")
+            if save_path is not None:
+                with open(save_path, 'wb') as f:
+                    f.write(graph.as_graph_def().SerializeToString())
+                print(f"Save model to {save_path}")
             return True
 
         # train_job(lr=0.001, total_steps=5000, report_interval=500)
         # train_job(lr=0.0003, total_steps=50000, report_interval=500)
         # train_job(lr=0.0001, total_steps=100000, report_interval=500)
 
-        learning_rates = np.linspace(1e-7, 1e-3, 50)
-        for lr in learning_rates:
+        learning_rates = np.linspace(1e-7, 1e-4, 20)
+        for i, lr in enumerate(learning_rates):
             success = train_job(lr=lr, total_steps=3000, report_interval=500)
+            if not success:
+                print('Loss becomes nan. Exiting...')
+                break
+
+        learning_rates = np.linspace(1e-4, 1e-6, 50)
+        for i, lr in enumerate(learning_rates):
+            model_path = os.path.join('./temp', f'alexnet_{i}_{lr}.pb')
+            success = train_job(lr=lr, total_steps=5000, report_interval=500, save_path=model_path)
             if not success:
                 print('Loss becomes nan. Exiting...')
                 break
