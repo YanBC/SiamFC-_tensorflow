@@ -2,18 +2,11 @@ import numpy as np
 from multiprocessing import Queue, Process, Event, Lock
 
 
-def create_worker(index, sampler, queue, lock, exit_event):
-    rng = np.random.RandomState(index)
+def create_worker(sampler, queue, exit_event):
+    rng = np.random.RandomState()
 
     while not exit_event.is_set():
         data = sampler.sample_one(rng)
-        # if lock.acquire(timeout=2):
-        #     try:
-        #         queue.put(data, timeout=2)
-        #     except:
-        #         pass
-        #     finally:
-        #         lock.release()
         try:
             queue.put(data, timeout=2)
         except:
@@ -24,9 +17,8 @@ def create_worker(index, sampler, queue, lock, exit_event):
 class DataLoader:
     def __init__(self, sampler, num_worker=4, buffer_size=6):
         self.queue = Queue(buffer_size)
-        self.queue_lock = Lock()
         self.exit = Event()
-        self.workers = [Process(target=create_worker, args=(i, sampler, self.queue, self.queue_lock, self.exit,)) for i in range(num_worker)]
+        self.workers = [Process(target=create_worker, args=(sampler, self.queue, self.exit,)) for i in range(num_worker)]
 
         for worker in self.workers:
             worker.start()
@@ -35,11 +27,11 @@ class DataLoader:
         return self.queue.get()
 
     def shutdown(self):
-        self.exit.set()
+        # self.exit.set()
+        # for worker in self.workers:
+        #     worker.join()
         for worker in self.workers:
             worker.terminate()
-        for worker in self.workers:
-            worker.join()
         return True
 
 
@@ -89,5 +81,3 @@ if __name__ == '__main__':
             target_label = label.argmax()
 
     tmp = datagen.shutdown()
-
-    a = 3
