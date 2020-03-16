@@ -5,7 +5,7 @@ from tensorflow.compat.v1.nn import conv2d, bias_add, batch_normalization, max_p
 from tensorflow.compat.v1.nn import softmax, relu
 from tensorflow.compat.v1.nn import depthwise_conv2d
 from tensorflow.compat.v1 import get_variable
-from tensorflow.compat.v1.initializers import he_normal
+from tensorflow.compat.v1.initializers import he_normal, zeros, ones
 
 from tensorflow.compat.v1.layers import BatchNormalization
 
@@ -127,10 +127,14 @@ class Conv_Bn_Relu(tf.Module):
                 # borrow from https://github.com/udacity/deep-learning/blob/master/batch-norm/Batch_Normalization_Solutions.ipynb
                 if self.has_bn:
                     self.epsilon = 1e-3
-                    self.gamma = get_variable(name='means', initializer=tf.ones([out_channel,]), trainable=True)
-                    self.beta = get_variable(name='variances', initializer=tf.zeros([out_channel,]), trainable=True)
-                    self.pop_mean = get_variable(name='offset', initializer=tf.zeros([out_channel,]), trainable=False)
-                    self.pop_variance = get_variable(name='scale', initializer=tf.ones([out_channel,]), trainable=False)
+                    # self.gamma = get_variable(name='means', initializer=tf.ones([out_channel,]), trainable=True)
+                    # self.beta = get_variable(name='variances', initializer=tf.zeros([out_channel,]), trainable=True)
+                    # self.pop_mean = get_variable(name='offset', initializer=tf.zeros([out_channel,]), trainable=False)
+                    # self.pop_variance = get_variable(name='scale', initializer=tf.ones([out_channel,]), trainable=False)
+                    self.gamma = get_variable(name='means', shape=[out_channel,], initializer=ones(), trainable=True)
+                    self.beta = get_variable(name='variances', shape=[out_channel,], initializer=zeros(), trainable=True)
+                    self.pop_mean = get_variable(name='offset', shape=[out_channel,], initializer=zeros(), trainable=False)
+                    self.pop_variance = get_variable(name='scale', shape=[out_channel,], initializer=ones(), trainable=False)
 
     @tf.Module.with_name_scope
     def _batch_norm_training(self, input_t):

@@ -162,3 +162,4 @@ pytorch2tf/
 images_and_videos/
 sequenced_datasets/
 classification_datasets/
+*_record/
