@@ -42,11 +42,22 @@ def create_datagen(input_size=224, input_channel=3, num_cls=1000, batchsize=16):
     datagen = DataLoader(sampler, num_worker=8, buffer_size=64)
     return datagen
 
+def get_opts():
+    p = argparse.ArgumentParser('Train AlexNet')
+    p.add_argument('lr', type=float, help='learning rate')
+    p.add_argument('steps', type=int, help='total steps to train')
+    p.add_argument('--ckpt', help='restore weights from the given checkpoint path')
+    p.add_argument('--gpus', default='0', help='specify gpus')
+    return p.parse_args()
+
+
 def train_job(lr, total_steps, global_step, report_interval=100, log_file='./alexnet_train.log', ckpt_name='./ckpt'):
     global datagen
     global sess
     global saver
-    global loss_t, acc_t, minimize_op, img_t, y_true_t, lr_t
+    global optimizer
+    global loss_t, acc_t, img_t, y_true_t, lr_t, gradients_t
+    global apply_gradients_op, minimize_op
 
     last_interval = None
     losses = []
@@ -55,7 +66,11 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
 
     for step in range(total_steps):
         data = datagen.load_one()
-        loss, acc, results = sess.run([loss_t, acc_t, minimize_op], feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
+        # # To examinate the gradients, uncomment the following lines
+        # loss, acc, gradients = sess.run([loss_t, acc_t, gradients_t], feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
+        # results = sess.run(apply_gradients_op, feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
+        loss, acc, _ = sess.run([loss_t, acc_t, minimize_op], feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
+
         losses.append(loss)
         accs.append(acc * 100)
         global_step += 1
@@ -79,12 +94,6 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
     log_to_file(log_file, f'Save model to {save_path}')
     return True, global_step
 
-def get_opts():
-    p = argparse.ArgumentParser('Train AlexNet')
-    p.add_argument('--ckpt', help='restore weights from the given checkpoint path')
-    p.add_argument('--gpus', default='0', help='specify gpus')
-    return p.parse_args()
-
 
 if __name__ == '__main__':
     opts = get_opts()
@@ -93,6 +102,8 @@ if __name__ == '__main__':
     else:
         restore_path = None
     os.environ['CUDA_VISIBLE_DEVICES'] = opts.gpus
+    opts_lr = opts.lr
+    opts_steps = opts.steps
 
     input_size = 224
     input_channel = 3
@@ -119,9 +130,11 @@ if __name__ == '__main__':
         # optimizer = AdamOptimizer(learning_rate=lr_t)
         optimizer = MomentumOptimizer(learning_rate=lr_t, momentum=0.9)
         output_t = network(img_t)
-        loss_t = loss(y_true_t, output_t)
-        acc_t = acc(y_true_t, output_t)
-        minimize_op = optimizer.minimize(loss_t)
+        loss_t = loss(output_t, y_true_t)
+        acc_t = acc(output_t, y_true_t)
+        minimize_op = optimizer.minimize(loss_t, var_list=network.trainable_variables)
+        gradients_t = optimizer.compute_gradients(loss_t, var_list=network.trainable_variables)
+        apply_gradients_op = optimizer.apply_gradients(gradients_t)
 
         saver = tf.train.Saver(var_list=network.trainable_variables, max_to_keep=10)
         sess = tf.Session()
@@ -150,7 +163,7 @@ if __name__ == '__main__':
 
         # success, global_step = train_job(lr=1e-6, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
-        success, global_step = train_job(lr=1, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+        success, global_step = train_job(lr=opts_lr, total_steps=opts_steps, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
 
     datagen.shutdown()

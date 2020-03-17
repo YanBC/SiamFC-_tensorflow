@@ -4,7 +4,7 @@ class Classification_Acc:
     def __init__(self, batchsize):
         self.batchsize = batchsize
 
-    def __call__(self, y_true, y_pred):
+    def __call__(self, y_pred, y_true):
         gt = tf.math.argmax(y_true, axis=1)
         pd = tf.math.argmax(y_pred, axis=1)
         results = tf.equal(gt, pd)
