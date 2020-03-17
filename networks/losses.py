@@ -1,4 +1,5 @@
 import tensorflow.compat.v1 as tf
+import numpy as np
 if __name__ == '__main__':
     tf.enable_eager_execution()
 
@@ -26,11 +27,21 @@ class Sigmoid_ce_retina:
     def __call__(self, pred, gt):
         pred = tf.sigmoid(pred)
 
-        pos_part = (1 - pred)**self.gamma * tf.log(pred) * gt
-        neg_part = pred**self.gamma * tf.log(1 - pred) * (1 - gt)
+        pos_part = (1 - pred)**self.gamma * tf.safelog(pred) * gt
+        neg_part = pred**self.gamma * tf.safelog(1 - pred) * (1 - gt)
         total = -1 * (pos_part * self.alpha + neg_part * (1 - self.alpha)) 
 
         loss = tf.reduce_sum(total) / tf.reduce_sum(gt)
+        return loss
+
+class Categorical_Entropy:
+    def __init__(self, batchsize):
+        self.batchsize = batchsize
+
+    def __call__(self, pred, gt):
+        loss = -1 * gt * safelog(pred)
+        num_batch = tf.cast(self.batchsize, tf.float32)
+        loss = tf.math.reduce_sum(loss) / num_batch
         return loss
 
 
