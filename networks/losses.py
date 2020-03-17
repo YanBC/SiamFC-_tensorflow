@@ -1,8 +1,7 @@
 import tensorflow.compat.v1 as tf
-import numpy as np
 if __name__ == '__main__':
     tf.enable_eager_execution()
-
+import numpy as np
 
 
 ###############################
@@ -109,24 +108,38 @@ class Iou_loss:
 if __name__ == '__main__':
     import numpy as np
 
-    B = 16
-    HW = 17 * 17
+    pred_v = np.random.rand(3,4)
+    pred_t = tf.constant(pred_v, dtype=tf.float32)
+    gt_v = np.zeros_like(pred_v)
+    gt_v[:,1] = 1
+    gt_t = tf.constant(gt_v, dtype=tf.float32)
 
-    np.random.seed(0)
-    pred_cls = tf.constant(np.random.rand(B, HW, 1))
-    gt_cls = tf.constant(np.random.randint(2, size=(B, HW, 1)).astype(np.float64))
-
-    pred_ctr = tf.constant(np.random.rand(B, HW, 1))
-    gt_ctr = tf.constant(np.random.randint(2, size=(B, HW, 1)).astype(np.float64))
-
-    pred_reg = tf.constant(np.random.rand(B, HW, 4))
-    gt_reg = tf.constant(np.random.rand(B, HW, 4))
+    loss = Categorical_Entropy(3)
+    loss_t = loss(pred_t, gt_t)
 
 
-    cal_cls = Sigmoid_ce_retina(alpha=0.5, gamma=0.0)
-    cal_ctr = Sigmoid_ce_centerness()
-    cal_reg = Iou_loss()
 
-    loss_cls = cal_cls(pred_cls, gt_cls)
-    loss_ctr = cal_ctr(pred_ctr, gt_ctr)
-    loss_reg = cal_reg(pred_reg, gt_reg, gt_cls)
+# if __name__ == '__main__':
+#     import numpy as np
+
+#     B = 16
+#     HW = 17 * 17
+
+#     np.random.seed(0)
+#     pred_cls = tf.constant(np.random.rand(B, HW, 1))
+#     gt_cls = tf.constant(np.random.randint(2, size=(B, HW, 1)).astype(np.float64))
+
+#     pred_ctr = tf.constant(np.random.rand(B, HW, 1))
+#     gt_ctr = tf.constant(np.random.randint(2, size=(B, HW, 1)).astype(np.float64))
+
+#     pred_reg = tf.constant(np.random.rand(B, HW, 4))
+#     gt_reg = tf.constant(np.random.rand(B, HW, 4))
+
+
+#     cal_cls = Sigmoid_ce_retina(alpha=0.5, gamma=0.0)
+#     cal_ctr = Sigmoid_ce_centerness()
+#     cal_reg = Iou_loss()
+
+#     loss_cls = cal_cls(pred_cls, gt_cls)
+#     loss_ctr = cal_ctr(pred_ctr, gt_ctr)
+#     loss_reg = cal_reg(pred_reg, gt_reg, gt_cls)
