@@ -1,5 +1,5 @@
 import tensorflow.compat.v1 as tf
-from tensorflow.compat.v1.train import AdamOptimizer
+from tensorflow.compat.v1.train import AdamOptimizer, MomentumOptimizer
 import os
 import signal
 import numpy as np
@@ -55,9 +55,9 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
 
     for step in range(total_steps):
         data = datagen.load_one()
-        loss, acc, _ = sess.run([loss_t, acc_t, minimize_op], feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
+        loss, acc, results = sess.run([loss_t, acc_t, minimize_op], feed_dict={img_t: data['X'], y_true_t: data['Y'], lr_t: lr})
         losses.append(loss)
-        accs.append(acc)
+        accs.append(acc * 100)
         global_step += 1
 
         if loss is np.nan:
@@ -70,7 +70,7 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
                 pass
             else:
                 now = time.time()
-                log_to_file(log_file, 'loss: %0.3f    acc: %0.3f\ntime: %0.3f steps per second' % (np.array(losses).mean(), np.array(accs).mean(), report_interval/(now-last_interval)))
+                log_to_file(log_file, 'loss: %0.3f    acc: %0.3f percent    speed: %0.3f steps/s' % (np.array(losses).mean(), np.array(accs).mean(), report_interval/(now-last_interval)))
                 losses = []
                 accs = []
             last_interval = time.time()
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     input_size = 224
     input_channel = 3
     num_cls = 1000
-    batchsize = 32
+    batchsize = 16
     record_dir = './alexnet_record'
     if not os.path.isdir(record_dir):
         os.mkdir(record_dir)
@@ -116,7 +116,8 @@ if __name__ == '__main__':
         network = AlexNet()
         loss = Categorical_Entropy(batchsize)
         acc = Classification_Acc(batchsize)
-        optimizer = AdamOptimizer(learning_rate=lr_t, epsilon=0.1)
+        # optimizer = AdamOptimizer(learning_rate=lr_t)
+        optimizer = MomentumOptimizer(learning_rate=lr_t, momentum=0.9)
         output_t = network(img_t)
         loss_t = loss(y_true_t, output_t)
         acc_t = acc(y_true_t, output_t)
@@ -133,23 +134,23 @@ if __name__ == '__main__':
         else:
             global_step = 0
 
-        learning_rates = np.linspace(1e-7, 1e-4, 20)
-        for i, lr in enumerate(learning_rates):
-            success, global_step = train_job(lr=lr, total_steps=2000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
-            if not success:
-                print('Loss becomes nan. Exiting...')
-                break
+        # learning_rates = np.linspace(1e-6, 1e-1, 20)
+        # for i, lr in enumerate(learning_rates):
+        #     success, global_step = train_job(lr=lr, total_steps=2000, global_step=global_step, report_interval=200, ckpt_name=ckpt_name, log_file=log_name)
+        #     if not success:
+        #         print('Loss becomes nan. Exiting...')
+        #         break
 
-        learning_rates = np.linspace(1e-4, 1e-6, 50)
-        for i, lr in enumerate(learning_rates):
-            success, global_step = train_job(lr=lr, total_steps=5000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
-            if not success:
-                print('Loss becomes nan. Exiting...')
-                break
+        # learning_rates = np.linspace(1e-4, 1e-6, 50)
+        # for i, lr in enumerate(learning_rates):
+        #     success, global_step = train_job(lr=lr, total_steps=5000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+        #     if not success:
+        #         print('Loss becomes nan. Exiting...')
+        #         break
 
-        success, global_step = train_job(lr=1e-6, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+        # success, global_step = train_job(lr=1e-6, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
-        success, global_step = train_job(lr=1e-7, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+        success, global_step = train_job(lr=1, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
 
     datagen.shutdown()
