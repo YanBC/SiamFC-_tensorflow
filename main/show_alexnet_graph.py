@@ -2,9 +2,7 @@ import tensorflow.compat.v1 as tf
 import sys
 sys.path.append('.')
 
-from networks.models import get_alexnet
-
-
+# from networks.models import get_alexnet
 # if __name__ == '__main__':
 #     graph = tf.Graph()
 

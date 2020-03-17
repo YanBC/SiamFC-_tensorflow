@@ -19,7 +19,7 @@ def conv_bn_relu(input_t,
                 has_relu=True,
                 has_bias=True):
     
-    with tf.variable_scope(name, initializer=he_normal(), reuse=tf.compat.v1.AUTO_REUSE):
+    with tf.variable_scope(name, initializer=he_normal(), reuse=tf.AUTO_REUSE):
         in_channel = input_t.shape[3]
 
         with tf.variable_scope('weights'):
