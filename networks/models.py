@@ -96,14 +96,6 @@ class DenseBoxHead(ModelBase):
         super().__init__(name=name)
         score_offset = (x_size - 1 - (score_size - 1) * total_stride) // 2
 
-        with tf.variable_scope('Weights'):
-            self.bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
-            self.si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32)
-
-        with tf.variable_scope('Constants'):
-            self.total_stride = constant(total_stride, dtype=tf.float32)
-            self.fm_ctr = self._get_xy_ctr(score_size, score_offset, total_stride)
-
         with tf.name_scope('conv3x3'):
             self.cls_conv_1 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_1')
             self.cls_conv_2 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_2')
@@ -121,6 +113,14 @@ class DenseBoxHead(ModelBase):
 
         with tf.name_scope('offset'):
             self.offset = Conv_Bn_Relu(in_channel=head_width, out_channel=4, strides=1, ksize=1, has_relu=False, name='offset_conv')
+
+        with tf.variable_scope('Weights'):
+            self.bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
+            self.si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32)
+
+        with tf.variable_scope('Constants'):
+            self.total_stride = constant(total_stride, dtype=tf.float32)
+            self.fm_ctr = self._get_xy_ctr(score_size, score_offset, total_stride)
 
     def __call__(self, input_cls, input_reg):
         output_conf = input_cls
@@ -141,7 +141,8 @@ class DenseBoxHead(ModelBase):
         ctr_score = self.ctr_score(output_conf)
         with tf.name_scope('ctr_score'):
             ctr_B, ctr_H, ctr_W, ctr_C = tf.unstack(tf.shape(ctr_score, name='shape'))
-            ctr_score = tf.reshape(ctr_score, (ctr_B, ctr_H*ctr_W, ctr_C), name='reshape')   
+            ctr_score = tf.reshape(ctr_score, (ctr_B, ctr_H*ctr_W, ctr_C), name='reshape')
+
         offset = self.offset(output_bbox)
         with tf.name_scope('offset'):
             offset = (self.si * offset + self.bi) * self.total_stride
@@ -172,7 +173,7 @@ class SiamFCpp(ModelBase):
 
         super().__init__(name=name)
 
-        with tf.name_scope('AlexNet_Feat'):
+        with tf.variable_scope('AlexNet_Feat'):
             self.feat = AlexNet_Feat()
 
         with tf.variable_scope('R_Z_K'):
@@ -190,19 +191,17 @@ class SiamFCpp(ModelBase):
         self.r_xcorr = Xcorr_Depthwise(name='Reg_Xcorr')
         self.c_xcorr = Xcorr_Depthwise(name='Cls_Xcorr')
 
-        with tf.name_scope('Head'):
+        with tf.variable_scope('Head'):
             self.head = DenseBoxHead(x_size=x_size, z_size=z_size, head_width=head_width, total_stride=total_stride, score_size=score_size)
 
     def __call__(self, input_x, input_z):
-        with tf.name_scope('Image'):
-            feature_img = self.feat(input_x)
-            cls_img = self.c_x(feature_img)
-            reg_img = self.r_x(feature_img)
+        feature_img = self.feat(input_x)
+        cls_img = self.c_x(feature_img)
+        reg_img = self.r_x(feature_img)
 
-        with tf.name_scope('Template'):
-            feature_template = self.feat(input_z)
-            cls_template = self.c_z_k(feature_template)
-            reg_template = self.r_z_k(feature_template)
+        feature_template = self.feat(input_z)
+        cls_template = self.c_z_k(feature_template)
+        reg_template = self.r_z_k(feature_template)
 
         r_out = self.r_xcorr(reg_img, reg_template)
         c_out = self.c_xcorr(cls_img, cls_template)
@@ -210,12 +209,5 @@ class SiamFCpp(ModelBase):
         cls_score, ctr_score, bbox = self.head(c_out, r_out)
 
         return cls_score, ctr_score, bbox
-
-
-
-
-        
-
-
 
 
