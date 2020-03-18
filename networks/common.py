@@ -203,7 +203,7 @@ class Fully_Connected(tf.Module):
 
 
 class Xcorr_Depthwise(tf.Module):
-    def __init__(self, name=None):
+    def __init__(self, name):
         super().__init__(name=name)
 
     @tf.Module.with_name_scope
@@ -226,7 +226,7 @@ class Xcorr_Depthwise(tf.Module):
 
 
 class Max_Pooling(tf.Module):
-    def __init__(self, name=None, ksize=3, strides=2, padding='VALID'):
+    def __init__(self, name, ksize=3, strides=2, padding='VALID'):
         super().__init__(name=name)
         self.ksize = ksize
         self.strides = strides
