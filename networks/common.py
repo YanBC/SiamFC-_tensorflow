@@ -9,7 +9,7 @@ from tensorflow.compat.v1.initializers import he_normal, zeros, ones
 
 
 class Conv_Bn_Relu(tf.Module):
-    def __init__(self, in_channel, out_channel, name, strides=1, ksize=3, has_bn=True, has_relu=True, has_bias=True):
+    def __init__(self, in_channel, out_channel, name=None, strides=1, ksize=3, has_bn=True, has_relu=True, has_bias=True):
         super().__init__(name=name)
         self.in_channel = in_channel
         self.out_channel = out_channel
@@ -18,8 +18,8 @@ class Conv_Bn_Relu(tf.Module):
         self.has_bn = has_bn
         self.strides = strides
 
-        with tf.variable_scope('Weights', initializer=he_normal()):
-            with tf.variable_scope(self.name):
+        with tf.variable_scope(self.name, default_name='convbr'):
+            with tf.variable_scope('parameters', initializer=he_normal()):
                 self.conv_weights = get_variable(name='weights', shape=[ksize, ksize, in_channel, out_channel], trainable=True)
 
                 if self.has_bias:
@@ -28,10 +28,6 @@ class Conv_Bn_Relu(tf.Module):
                 # borrow from https://github.com/udacity/deep-learning/blob/master/batch-norm/Batch_Normalization_Solutions.ipynb
                 if self.has_bn:
                     self.epsilon = 1e-3
-                    # self.gamma = get_variable(name='means', initializer=tf.ones([out_channel,]), trainable=True)
-                    # self.beta = get_variable(name='variances', initializer=tf.zeros([out_channel,]), trainable=True)
-                    # self.pop_mean = get_variable(name='offset', initializer=tf.zeros([out_channel,]), trainable=False)
-                    # self.pop_variance = get_variable(name='scale', initializer=tf.ones([out_channel,]), trainable=False)
                     self.gamma = get_variable(name='means', shape=[out_channel,], initializer=ones(), trainable=True)
                     self.beta = get_variable(name='variances', shape=[out_channel,], initializer=zeros(), trainable=True)
                     self.pop_mean = get_variable(name='offset', shape=[out_channel,], initializer=zeros(), trainable=False)
@@ -52,29 +48,28 @@ class Conv_Bn_Relu(tf.Module):
     def _batch_norm_inference(self, input_t):
         return tf.nn.batch_normalization(input_t, self.pop_mean, self.pop_variance, self.beta, self.gamma, self.epsilon)
 
-
     @tf.Module.with_name_scope
     def __call__(self, input_t, is_training=True):
         assert input_t.shape[3] == self.in_channel
 
-        output_t = conv2d(input_t, filter=self.conv_weights, strides=self.strides, padding='VALID', name='conv')
+        output_t = conv2d(input_t, filter=self.conv_weights, strides=self.strides, padding='VALID')
 
         if self.has_bias:
-            output_t = bias_add(output_t, self.conv_bias, name='biasadd')
+            output_t = bias_add(output_t, self.conv_bias)
 
         if self.has_bn:
             output_t = tf.cond(tf.constant(is_training, dtype=tf.bool), lambda: self._batch_norm_training(output_t), lambda: self._batch_norm_inference(output_t))
-            # # output_t = batch_normalization(output_t, mean=self.bn_means, variance=self.bn_variances, offset=self.bn_offset, scale=self.bn_scale, variance_epsilon=1e-05, name='bn')
-            # self.batchnorm(output_t)
 
         if self.has_relu:
-            output_t = relu(output_t, name='relu')
+            output_t = relu(output_t)
 
         return output_t
 
 
+
+
 class Fully_Connected(tf.Module):
-    def __init__(self, in_size, out_size, name, has_bias=True, has_relu=False, has_softmax=False):
+    def __init__(self, in_size, out_size, name=None, has_bias=True, has_relu=False, has_softmax=False):
         super().__init__(name=name)
 
         assert (has_relu == False or has_softmax == False)
@@ -84,27 +79,29 @@ class Fully_Connected(tf.Module):
         self.has_relu = has_relu
         self.has_softmax = has_softmax
 
-        with tf.variable_scope('Weights', initializer=he_normal()):
-            with tf.variable_scope(self.name):
+        with tf.variable_scope(self.name, default_name='fc'):
+            with tf.variable_scope('parameters', initializer=he_normal()):
                 self.weights = tf.get_variable('weights', shape=(self.in_size, self.out_size), trainable=True)
                 if self.has_bias:
                     self.bias = tf.get_variable('bias', shape=(self.out_size,), trainable=True)
 
     @tf.Module.with_name_scope
     def __call__(self, input_t):
-        output_t = tf.matmul(input_t, self.weights, name='matmul')
+        output_t = tf.matmul(input_t, self.weights)
         if self.has_bias:
-            output_t = bias_add(output_t, self.bias, name='biasadd')
+            output_t = bias_add(output_t, self.bias)
         if self.has_relu:
-            output_t = relu(output_t, name='relu')
+            output_t = relu(output_t)
         if self.has_softmax:
-            output_t = softmax(output_t, name='softmax')
+            output_t = softmax(output_t)
 
         return output_t
 
 
+
+
 class Xcorr_Depthwise(tf.Module):
-    def __init__(self, name):
+    def __init__(self, name=None):
         super().__init__(name=name)
 
     @tf.Module.with_name_scope
@@ -126,8 +123,10 @@ class Xcorr_Depthwise(tf.Module):
         return net_final
 
 
+
+
 class Max_Pooling(tf.Module):
-    def __init__(self, name, ksize=3, strides=2, padding='VALID'):
+    def __init__(self, name=None, ksize=3, strides=2, padding='VALID'):
         super().__init__(name=name)
         self.ksize = ksize
         self.strides = strides
@@ -137,6 +136,8 @@ class Max_Pooling(tf.Module):
     def __call__(self, input_t):
         output_t = max_pool2d(input_t, ksize=self.ksize, strides=self.strides, padding=self.padding)
         return output_t
+
+
 
 
 

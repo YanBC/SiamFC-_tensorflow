@@ -56,10 +56,10 @@ class AlexNet(ModelBase):
     def __init__(self, name=None):
         super().__init__(name=name)
 
-        with tf.name_scope('AlexNet_Feat'):
+        with tf.variable_scope('Feat'):
             self.feat = AlexNet_Feat()
 
-        self.pool_3 = Max_Pooling(ksize=3, strides=2, padding='VALID', name='pool_3')
+        self.pool_3 = Max_Pooling(ksize=3, strides=2, padding='VALID', name='pool')
         self.conv_1 = Conv_Bn_Relu(in_channel=256, out_channel=256, strides=1, ksize=3, name='conv_1')
         self.conv_2 = Conv_Bn_Relu(in_channel=256, out_channel=128, strides=1, ksize=3, name='conv_2')
 
@@ -96,29 +96,25 @@ class DenseBoxHead(ModelBase):
         super().__init__(name=name)
         score_offset = (x_size - 1 - (score_size - 1) * total_stride) // 2
 
-        with tf.name_scope('conv3x3'):
-            self.cls_conv_1 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_1')
-            self.cls_conv_2 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_2')
-            self.cls_conv_3 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=True, name='cls_conv_3')
+        self.cls_conv_1 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_1')
+        self.cls_conv_2 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='cls_conv_2')
+        self.cls_conv_3 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=True, name='cls_conv_3')
 
-            self.reg_conv_1 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='reg_conv_1')
-            self.reg_conv_2 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='reg_conv_2')
-            self.reg_conv_3 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=True, name='reg_conv_3')
+        self.reg_conv_1 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='reg_conv_1')
+        self.reg_conv_2 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=False, name='reg_conv_2')
+        self.reg_conv_3 = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_bn=True, name='reg_conv_3')
 
-        with tf.name_scope('cls_score'):
-            self.cls_score = Conv_Bn_Relu(in_channel=head_width, out_channel=1, strides=1, ksize=1, has_relu=False, name='cls_score_conv')
+        self.cls_score = Conv_Bn_Relu(in_channel=head_width, out_channel=1, strides=1, ksize=1, has_relu=False, name='cls_score_conv')
 
-        with tf.name_scope('ctr_score'):
-            self.ctr_score = Conv_Bn_Relu(in_channel=head_width, out_channel=1, strides=1, ksize=1, has_relu=False, name='ctr_score_conv')
+        self.ctr_score = Conv_Bn_Relu(in_channel=head_width, out_channel=1, strides=1, ksize=1, has_relu=False, name='ctr_score_conv')
 
-        with tf.name_scope('offset'):
-            self.offset = Conv_Bn_Relu(in_channel=head_width, out_channel=4, strides=1, ksize=1, has_relu=False, name='offset_conv')
+        self.offset = Conv_Bn_Relu(in_channel=head_width, out_channel=4, strides=1, ksize=1, has_relu=False, name='offset_conv')
 
-        with tf.variable_scope('Weights'):
+        with tf.variable_scope('fm_sb'):
             self.bi = get_variable(name='bi', initializer=0.0, trainable=True, dtype=tf.float32)
             self.si = get_variable(name='si', initializer=1.0, trainable=True, dtype=tf.float32)
 
-        with tf.variable_scope('Constants'):
+        with tf.variable_scope('fm_ctr'):
             self.total_stride = constant(total_stride, dtype=tf.float32)
             self.fm_ctr = self._get_xy_ctr(score_size, score_offset, total_stride)
 
