@@ -44,8 +44,8 @@ def create_datagen(input_size=224, input_channel=3, num_cls=1000, batchsize=16):
 
 def get_opts():
     p = argparse.ArgumentParser('Train AlexNet')
-    p.add_argument('lr', type=float, help='learning rate')
-    p.add_argument('steps', type=int, help='total steps to train')
+    p.add_argument('--lr', type=float, help='learning rate')
+    p.add_argument('--steps', type=int, help='total steps to train')
     p.add_argument('--ckpt', help='restore weights from the given checkpoint path')
     p.add_argument('--gpus', default='0', help='specify gpus')
     return p.parse_args()
@@ -102,8 +102,8 @@ if __name__ == '__main__':
     else:
         restore_path = None
     os.environ['CUDA_VISIBLE_DEVICES'] = opts.gpus
-    opts_lr = opts.lr
-    opts_steps = opts.steps
+    opts_lr = opts.lr if opts.lr is not None else None
+    opts_steps = opts.steps if opts.steps is not None else None
 
     input_size = 224
     input_channel = 3
@@ -147,23 +147,21 @@ if __name__ == '__main__':
         else:
             global_step = 0
 
-        # learning_rates = np.linspace(1e-6, 1e-1, 20)
-        # for i, lr in enumerate(learning_rates):
-        #     success, global_step = train_job(lr=lr, total_steps=2000, global_step=global_step, report_interval=200, ckpt_name=ckpt_name, log_file=log_name)
-        #     if not success:
-        #         print('Loss becomes nan. Exiting...')
-        #         break
 
-        # learning_rates = np.linspace(1e-4, 1e-6, 50)
-        # for i, lr in enumerate(learning_rates):
-        #     success, global_step = train_job(lr=lr, total_steps=5000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
-        #     if not success:
-        #         print('Loss becomes nan. Exiting...')
-        #         break
+        if opts_lr and opts_steps:
+            success, global_step = train_job(lr=opts_lr, total_steps=opts_steps, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+        else:
+            success, global_step = train_job(lr=1e-3,, total_steps=200000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
-        # success, global_step = train_job(lr=1e-6, total_steps=50000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+            learning_rates = np.linspace(1e-3, 1e-5, 30)
+            for i, lr in enumerate(learning_rates):
+                success, global_step = train_job(lr=lr, total_steps=100000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+                if not success:
+                    print('Loss becomes nan. Exiting...')
+                    break
 
-        success, global_step = train_job(lr=opts_lr, total_steps=opts_steps, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+
+        
 
 
     datagen.shutdown()
