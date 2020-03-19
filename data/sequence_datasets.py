@@ -218,20 +218,6 @@ class GOT10k_Dataset(Sequence_Dataset_Base):
 
 
 
-# #########################
-# # formater classes
-# #########################
-# class Siamfcpp_Formater:
-#     def __init__(self):
-#         pass
-
-#     def __call__(self):
-#         pass
-
-
-
-
-
 #########################
 # sampler classes
 #########################
@@ -272,7 +258,8 @@ class Siamfcpp_Sampler:
             bbox_x=bbox_x,
             cls_gt=cls_gt,
             ctr_gt=ctr_gt,
-            box_gt=box_gt
+            box_gt=box_gt,
+            is_negative=is_negative_pair
         )
         return final_data
 
@@ -288,6 +275,7 @@ class Siamfcpp_Sampler:
     def _sample_pair(self, rng):
         x_id = rng.choice(self.dataset.sequence_ids)
         sequence = self.dataset.sequence_datas[x_id]
+        imageDir = os.path.join(self.dataset.dir, sequence.dir)
 
         max_diff = self.dataset.positive_interval
         L = len(sequence)
@@ -297,10 +285,10 @@ class Siamfcpp_Sampler:
         idx2 = rng.choice(idx2_choices)
         
         data1 = sequence[idx1]
-        image1 = self._load_image(os.path.join(sequence.dir, data1.imageName))
+        image1 = self._load_image(os.path.join(imageDir, data1.imageName))
         coors1 = data1.coors
         data2 = sequence[idx2]
-        image2 = self._load_image(os.path.join(sequence.dir, data2.imageName))
+        image2 = self._load_image(os.path.join(imageDir, data2.imageName))
         coors2 = data2.coors
 
         return dict(image=image1, bbox=coors1), dict(image=image2, bbox=coors2)
@@ -359,3 +347,20 @@ class Siamfcpp_Sampler:
         return target_data
 
 
+
+
+# test Siamfcpp_Sampler
+if __name__ == '__main__':
+  got_path = './datasets/GOT10k/train_data/'
+  dataName = 'got10k_filered.pkl'
+
+  got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+  got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
+  # got_dataset.show_image()
+
+  import numpy as np
+  rng = np.random.RandomState(seed=0)
+
+  batchsize = 3
+  sampler = Siamfcpp_Sampler(got_dataset, batchsize=batchsize)
+  data = sampler.sample_one(rng)
