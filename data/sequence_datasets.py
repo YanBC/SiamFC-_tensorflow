@@ -222,10 +222,11 @@ class GOT10k_Dataset(Sequence_Dataset_Base):
 # sampler classes
 #########################
 class Siamfcpp_Sampler:
-    def __init__(self, dataset, batchsize, neg_ratio=0.1):
+    def __init__(self, dataset, batchsize, channel_mean=None, neg_ratio=0.1):
         self.dataset = dataset
         self.batchsize = batchsize
         self.neg_ratio = neg_ratio
+        self.channel_mean = channel_mean
 
     def sample_one(self, rng):
         data = []
@@ -241,6 +242,9 @@ class Siamfcpp_Sampler:
             sampled_data = dict(data_z=data1, data_x=data2, is_negative_pair=is_negative_pair)
             croped_data = self._crop_data(sampled_data)
             target_data = self._make_target(croped_data)
+
+            target_data['im_z'] = self._subtract_mean(target_data['im_z'])
+            target_data['im_x'] = self._subtract_mean(target_data['im_x'])
             data.append(target_data)
 
         im_z = np.stack([x['im_z'] for x in data])
@@ -262,6 +266,14 @@ class Siamfcpp_Sampler:
             is_negative=is_negative_pair
         )
         return final_data
+
+    def _subtract_mean(self, img):
+        h, w, c = img.shape
+        assert c == 3
+        if self.channel_mean is not None:
+            return img - self.channel_mean
+        else:
+            return img - np.mean(img, axis=(0,1))
 
     def _sample_frame(self, rng):
         x_id = rng.choice(self.dataset.sequence_ids)
@@ -351,16 +363,21 @@ class Siamfcpp_Sampler:
 
 # test Siamfcpp_Sampler
 if __name__ == '__main__':
-  got_path = './datasets/GOT10k/train_data/'
-  dataName = 'got10k_filered.pkl'
+    from data.classification_datasets import Imagenet2012
+    imagenet_dir = './datasets/imagenet'
+    dataName = 'imagenet2012_filtered.pkl'
+    imagenet_dataset = Imagenet2012(imagenet_dir)
+    imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+    channel_mean = imagenet_dataset.channel_mean
 
-  got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
-  got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
-  # got_dataset.show_image()
+    got_path = './datasets/GOT10k/train_data/'
+    dataName = 'got10k_filered.pkl'
+    got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+    got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
 
-  import numpy as np
-  rng = np.random.RandomState(seed=0)
+    import numpy as np
+    rng = np.random.RandomState(seed=0)
 
-  batchsize = 3
-  sampler = Siamfcpp_Sampler(got_dataset, batchsize=batchsize)
-  data = sampler.sample_one(rng)
+    batchsize = 3
+    sampler = Siamfcpp_Sampler(got_dataset, batchsize=batchsize, channel_mean=channel_mean)
+    data = sampler.sample_one(rng)
