@@ -3,7 +3,7 @@ import numpy as np
 
 import sys
 sys.path.append('./')
-from utils.bbox import cxywh2xyxy
+from .bbox import cxywh2xyxy
 
 
 

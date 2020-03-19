@@ -206,10 +206,10 @@ class GOT10k_Dataset(Sequence_Dataset_Base):
 #   got_path = './datasets/GOT10k/train_data/'
 #   dataName = 'got10k_filered.pkl'
 
-#   got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
-#   got_dataset.load_sequence()
-#   got_dataset.save_sequence_to_file(desName=dataName)
-#   del got_dataset
+#   # got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+#   # got_dataset.load_sequence()
+#   # got_dataset.save_sequence_to_file(desName=dataName)
+#   # del got_dataset
 
 #   got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
 #   got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))

@@ -21,8 +21,8 @@ Procedure
 import cv2
 import numpy as np
 
-from .utils.bbox import cxywh2xyxy, xyxy2cxywh
-from .utils.crop import get_subwindow_tracking
+from .bbox import cxywh2xyxy, xyxy2cxywh
+from .crop import get_subwindow_tracking
 
 _MAX_RETRY = 50
 
