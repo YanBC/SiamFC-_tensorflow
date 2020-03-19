@@ -151,7 +151,7 @@ if __name__ == '__main__':
         if opts_lr and opts_steps:
             success, global_step = train_job(lr=opts_lr, total_steps=opts_steps, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
         else:
-            success, global_step = train_job(lr=1e-3,, total_steps=200000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+            success, global_step = train_job(lr=1e-3, total_steps=200000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
 
             learning_rates = np.linspace(1e-3, 1e-5, 30)
             for i, lr in enumerate(learning_rates):
