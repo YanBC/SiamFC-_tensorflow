@@ -139,18 +139,18 @@ class Sequence_Dataset_Base:
 
 class GOT10k_Dataset(Sequence_Dataset_Base):
 
-    def load_sequence(self):
+    def load_sequence(self, ignorefile=None):
         print('''GOT10k_Dataset: loading data...''')
         listfile = 'list.txt'
-        ignorefile = './data/unfixed_got10k_list.txt'
         with open(os.path.join(self.dir, listfile)) as f:
             videoDirs = sorted([x.strip() for x in f.readlines()])
 
-        with open(ignorefile) as f:
-            videoDirsIgnore = sorted([x.strip() for x in f.readlines()])
+        if ignorefile is not None:
+            with open(ignorefile) as f:
+                videoDirsIgnore = sorted([x.strip() for x in f.readlines()])
 
-        for ignore in videoDirsIgnore:
-            videoDirs.remove(ignore)
+            for ignore in videoDirsIgnore:
+                videoDirs.remove(ignore)
 
         sequence_list = []
         for videoDir in videoDirs:
@@ -197,23 +197,6 @@ class GOT10k_Dataset(Sequence_Dataset_Base):
             pickle.dump(self.sequence_datas, f)
         print('''finish saving ''')
         return True
-
-
-
-
-# # test GOT10k
-# if __name__ == '__main__':
-#   got_path = './datasets/GOT10k/train_data/'
-#   dataName = 'got10k_filered.pkl'
-
-#   # got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
-#   # got_dataset.load_sequence()
-#   # got_dataset.save_sequence_to_file(desName=dataName)
-#   # del got_dataset
-
-#   got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
-#   got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
-#   got_dataset.show_image()
 
 
 
@@ -361,23 +344,64 @@ class Siamfcpp_Sampler:
 
 
 
-# test Siamfcpp_Sampler
-if __name__ == '__main__':
-    from data.classification_datasets import Imagenet2012
-    imagenet_dir = './datasets/imagenet'
-    dataName = 'imagenet2012_filtered.pkl'
-    imagenet_dataset = Imagenet2012(imagenet_dir)
-    imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
-    channel_mean = imagenet_dataset.channel_mean
 
-    got_path = './datasets/GOT10k/train_data/'
-    dataName = 'got10k_filered.pkl'
-    got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
-    got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
 
-    import numpy as np
-    rng = np.random.RandomState(seed=0)
 
-    batchsize = 3
-    sampler = Siamfcpp_Sampler(got_dataset, batchsize=batchsize, channel_mean=channel_mean)
-    data = sampler.sample_one(rng)
+
+#########################
+# tests
+#########################
+
+# # test GOT10k
+# if __name__ == '__main__':
+#   # got_path = './datasets/GOT10k/train_data/'
+#   # dataName = 'got10k_filered.pkl'
+#   # ignorefile = './data/unfixed_got10k_list.txt'
+#   # got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+#   # got_dataset.load_sequence(ignorefile=ignorefile)
+#   # got_dataset.save_sequence_to_file(desName=dataName)
+#   # del got_dataset
+#   # got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+#   # got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
+#   # got_dataset.show_image()
+
+#   val_got_path = './datasets/GOT10k/val_data/'
+#   val_dataName = 'got10k_val.pkl'
+#   val_got_dataset = GOT10k_Dataset(val_got_path, positive_interval=100)
+#   val_got_dataset.load_sequence(ignorefile=None)
+#   val_got_dataset.save_sequence_to_file(desName=val_dataName)
+#   del val_got_dataset
+#   val_got_dataset = GOT10k_Dataset(val_got_path, positive_interval=100)
+#   val_got_dataset.load_sequence_from_file(os.path.join(val_got_dataset.storage, val_dataName))
+#   val_got_dataset.show_image()
+
+
+
+
+
+
+
+
+
+
+
+# # test Siamfcpp_Sampler
+# if __name__ == '__main__':
+#     from data.classification_datasets import Imagenet2012
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012_filtered.pkl'
+#     imagenet_dataset = Imagenet2012(imagenet_dir)
+#     imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+#     channel_mean = imagenet_dataset.channel_mean
+
+#     got_path = './datasets/GOT10k/train_data/'
+#     dataName = 'got10k_filered.pkl'
+#     got_dataset = GOT10k_Dataset(got_path, positive_interval=100)
+#     got_dataset.load_sequence_from_file(os.path.join(got_dataset.storage, dataName))
+
+#     import numpy as np
+#     rng = np.random.RandomState(seed=0)
+
+#     batchsize = 3
+#     sampler = Siamfcpp_Sampler(got_dataset, batchsize=batchsize, channel_mean=channel_mean)
+#     data = sampler.sample_one(rng)
