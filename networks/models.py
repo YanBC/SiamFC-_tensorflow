@@ -41,14 +41,14 @@ class AlexNet_Feat(ModelBase):
         self.pool_1 = Max_Pooling(ksize=3, strides=2, padding='VALID', name='pool_1')
         self.pool_2 = Max_Pooling(ksize=3, strides=2, padding='VALID', name='pool_2')
 
-    def __call__(self, input_t):
-        output_t = self.block_1(input_t)
+    def __call__(self, input_t, is_training=True):
+        output_t = self.block_1(input_t, is_training=is_training)
         output_t = self.pool_1(output_t)
-        output_t = self.block_2(output_t)
+        output_t = self.block_2(output_t, is_training=is_training)
         output_t = self.pool_2(output_t)
-        output_t = self.block_3(output_t)
-        output_t = self.block_4(output_t)
-        output_t = self.block_5(output_t)
+        output_t = self.block_3(output_t, is_training=is_training)
+        output_t = self.block_4(output_t, is_training=is_training)
+        output_t = self.block_5(output_t, is_training=is_training)
         return output_t
 
 
@@ -66,12 +66,12 @@ class AlexNet(ModelBase):
         self.fc_1 = Fully_Connected(in_size=2048, out_size=2048, has_relu=True, name='fc_1')
         self.fc_2 = Fully_Connected(in_size=2048, out_size=1000, has_softmax=True, name='fc_2')
 
-    def __call__(self, input_t):
-        output_t = self.feat(input_t)
+    def __call__(self, input_t, is_training=True):
+        output_t = self.feat(input_t, is_training=is_training)
 
         output_t = self.pool_3(output_t)
-        output_t = self.conv_1(output_t)
-        output_t = self.conv_2(output_t)
+        output_t = self.conv_1(output_t, is_training=is_training)
+        output_t = self.conv_2(output_t, is_training=is_training)
 
         output_t = tf.layers.flatten(output_t)
         output_t = self.fc_1(output_t)
@@ -85,8 +85,8 @@ class Adapter(ModelBase):
         super().__init__(name=name)
         self.conv = Conv_Bn_Relu(in_channel=head_width, out_channel=head_width, strides=1, ksize=3, has_relu=False, name='conv')
 
-    def __call__(self, input_t):
-        output_t = self.conv(input_t)
+    def __call__(self, input_t, is_training=True):
+        output_t = self.conv(input_t, is_training=is_training)
         return output_t
 
 
@@ -118,28 +118,28 @@ class DenseBoxHead(ModelBase):
             self.total_stride = constant(total_stride, dtype=tf.float32)
             self.fm_ctr = self._get_xy_ctr(score_size, score_offset, total_stride)
 
-    def __call__(self, input_cls, input_reg):
+    def __call__(self, input_cls, input_reg, is_training=True):
         output_conf = input_cls
         output_bbox = input_reg
 
-        output_conf = self.cls_conv_1(output_conf)
-        output_conf = self.cls_conv_2(output_conf)
-        output_conf = self.cls_conv_3(output_conf)
-        output_bbox = self.reg_conv_1(output_bbox)
-        output_bbox = self.reg_conv_2(output_bbox)
-        output_bbox = self.reg_conv_3(output_bbox)
+        output_conf = self.cls_conv_1(output_conf, is_training=is_training)
+        output_conf = self.cls_conv_2(output_conf, is_training=is_training)
+        output_conf = self.cls_conv_3(output_conf, is_training=is_training)
+        output_bbox = self.reg_conv_1(output_bbox, is_training=is_training)
+        output_bbox = self.reg_conv_2(output_bbox, is_training=is_training)
+        output_bbox = self.reg_conv_3(output_bbox, is_training=is_training)
 
-        cls_score = self.cls_score(output_conf)
+        cls_score = self.cls_score(output_conf, is_training=is_training)
         with tf.name_scope('cls_score'):
             cls_B, cls_H, cls_W, cls_C = tf.unstack(tf.shape(cls_score, name='shape'))
             cls_score = tf.reshape(cls_score, (cls_B, cls_H*cls_W, cls_C), name='reshape')
 
-        ctr_score = self.ctr_score(output_conf)
+        ctr_score = self.ctr_score(output_conf, is_training=is_training)
         with tf.name_scope('ctr_score'):
             ctr_B, ctr_H, ctr_W, ctr_C = tf.unstack(tf.shape(ctr_score, name='shape'))
             ctr_score = tf.reshape(ctr_score, (ctr_B, ctr_H*ctr_W, ctr_C), name='reshape')
 
-        offset = self.offset(output_bbox)
+        offset = self.offset(output_bbox, is_training=is_training)
         with tf.name_scope('offset'):
             offset = (self.si * offset + self.bi) * self.total_stride
             offset = tf.exp(offset, name='exp')
@@ -190,19 +190,19 @@ class SiamFCpp(ModelBase):
         with tf.variable_scope('Head'):
             self.head = DenseBoxHead(x_size=x_size, z_size=z_size, head_width=head_width, total_stride=total_stride, score_size=score_size)
 
-    def __call__(self, input_x, input_z):
-        feature_img = self.feat(input_x)
-        cls_img = self.c_x(feature_img)
-        reg_img = self.r_x(feature_img)
+    def __call__(self, input_x, input_z, is_training=True):
+        feature_img = self.feat(input_x, is_training=is_training)
+        cls_img = self.c_x(feature_img, is_training=is_training)
+        reg_img = self.r_x(feature_img, is_training=is_training)
 
-        feature_template = self.feat(input_z)
-        cls_template = self.c_z_k(feature_template)
-        reg_template = self.r_z_k(feature_template)
+        feature_template = self.feat(input_z, is_training=is_training)
+        cls_template = self.c_z_k(feature_template, is_training=is_training)
+        reg_template = self.r_z_k(feature_template, is_training=is_training)
 
         r_out = self.r_xcorr(reg_img, reg_template)
         c_out = self.c_xcorr(cls_img, cls_template)
 
-        cls_score, ctr_score, bbox = self.head(c_out, r_out)
+        cls_score, ctr_score, bbox = self.head(c_out, r_out, is_training=is_training)
 
         return cls_score, ctr_score, bbox
 

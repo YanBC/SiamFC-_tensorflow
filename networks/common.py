@@ -59,7 +59,11 @@ class Conv_Bn_Relu(tf.Module):
             output_t = bias_add(output_t, self.conv_bias)
 
         if self.has_bn:
-            output_t = tf.cond(tf.constant(is_training, dtype=tf.bool), lambda: self._batch_norm_training(output_t), lambda: self._batch_norm_inference(output_t))
+            # output_t = tf.cond(tf.constant(is_training, dtype=tf.bool), lambda: self._batch_norm_training(output_t), lambda: self._batch_norm_inference(output_t))
+            if is_training:
+                output_t = self._batch_norm_training(output_t)
+            else:
+                output_t = self._batch_norm_inference(output_t)
 
         if self.has_relu:
             output_t = relu(output_t)

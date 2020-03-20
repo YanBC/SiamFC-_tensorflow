@@ -14,7 +14,7 @@ if __name__ == '__main__':
             img_t = tf.placeholder(dtype=tf.float32, shape=(1, 303, 303, 3), name='image')
             template_t = tf.placeholder(dtype=tf.float32, shape=(1, 127, 127, 3), name='template')
         network = SiamFCpp()
-        output_t = network(img_t, template_t)
+        output_t = network(img_t, template_t, is_training=False)
 
         tf.summary.FileWriter('./temp/siamfcpp', graph=graph)
 
