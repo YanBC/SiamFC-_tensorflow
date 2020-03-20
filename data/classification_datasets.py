@@ -219,7 +219,7 @@ class Imagenet2012(Classification_Dataset_Base):
 
 class Imagenet2012_Val(Imagenet2012):
 
-    def __init__(self, path, label_dict, channel_mean):
+    def __init__(self, path, label_dict=None, channel_mean=None):
         super().__init__(path)
         assert os.path.isdir(self.annoDir)
         assert os.path.isdir(self.imageDir)
@@ -254,7 +254,10 @@ class Imagenet2012_Val(Imagenet2012):
 
     def load_data(self):
         print('Imagenet2012: loading data...')
-        
+        if self.label_dict is None or self._channel_mean is None:
+            print('In order to load data, you have to initialize Imagenet2012_Val with a valid label_dict and a valid channel_mean. Exiting...')
+            return False
+
         imageFiles = sorted(os.listdir(self.imageDir))
         annoFiles = sorted(os.listdir(self.annoDir))
         args = [x for x in zip(imageFiles, annoFiles)]
@@ -276,6 +279,9 @@ class Imagenet2012_Val(Imagenet2012):
         print('''finish loading''')
         return True
 
+    @property
+    def channel_mean(self):
+        return self._channel_mean
 
 
 #########################

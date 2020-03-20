@@ -11,14 +11,16 @@ sys.path.append('.')
 from networks.models import AlexNet
 from networks.losses import Categorical_Entropy
 from networks.metrics import Classification_Acc
-from data.classification_datasets import Data, Imagenet2012, Alexnet_Formater, Alexnet_Sampler
+from data.classification_datasets import Data, Imagenet2012, Imagenet2012_Val
+from data.classification_datasets import Alexnet_Formater, Alexnet_Sampler
 from data.dataloader import DataLoader
 
 
 def SIGINT_handler(signum, frame):
     print(f'Sigal #{signum} receive. Exiting...')
-    global datagen
+    global datagen, valgen
     datagen.shutdown()
+    valgen.shutdown()
     exit(0)
 
 def log_to_file(filepath, message, endwith='\n'):
@@ -42,6 +44,18 @@ def create_datagen(input_size=224, input_channel=3, num_cls=1000, batchsize=16):
     datagen = DataLoader(sampler, num_worker=8, buffer_size=64)
     return datagen
 
+def create_valgen(input_size=224, input_channel=3, num_cls=1000, batchsize=16, val_iter=64):
+    val_imagenet_dir = './datasets/imagenet/validation_dataset'
+    val_dataName = 'imagenet2012_val.pkl'
+    val_imagenet_dataset = Imagenet2012_Val(val_imagenet_dir)
+    val_imagenet_dataset.load_data_from_file(os.path.join(val_imagenet_dataset.storage, val_dataName))
+    channel_mean = val_imagenet_dataset.channel_mean
+
+    formater = Alexnet_Formater(input_size, channel_mean, num_cls)
+    sampler = Alexnet_Sampler(val_imagenet_dataset, formater, batchsize)
+    loader = DataLoader(sampler, num_worker=2, buffer_size=val_iter+1)
+    return loader
+
 def get_opts():
     p = argparse.ArgumentParser('Train AlexNet')
     p.add_argument('--lr', type=float, help='learning rate')
@@ -51,8 +65,8 @@ def get_opts():
     return p.parse_args()
 
 
-def train_job(lr, total_steps, global_step, report_interval=100, log_file='./alexnet_train.log', ckpt_name='./ckpt'):
-    global datagen
+def train_job(lr, total_steps, global_step, report_interval=100, val_iter=64, log_file='./alexnet_train.log', ckpt_name='./ckpt'):
+    global datagen, valgen
     global sess
     global saver
     global optimizer
@@ -63,7 +77,6 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
     losses = []
     accs = []
     log_to_file(log_file, f'Setting learning rate to be {lr} for the next {total_steps} steps...')
-
     for step in range(total_steps):
         data = datagen.load_one()
         # # To examinate the gradients, uncomment the following lines
@@ -90,8 +103,17 @@ def train_job(lr, total_steps, global_step, report_interval=100, log_file='./ale
                 accs = []
             last_interval = time.time()
 
+    val_losses = []
+    val_accs = []
+    for val_step in range(val_iter):
+        val_data = valgen.load_one()
+        val_loss, val_acc = sess.run([loss_t, acc_t], feed_dict={img_t: val_data['X'], y_true_t: val_data['Y']})
+        val_losses.append(val_loss)
+        val_accs.append(val_acc)
+
+    log_to_file(log_file, 'Validation:\nloss: %0.3f    acc: %0.3f percent' % (np.array(val_losses).mean(), np.array(val_accs).mean()))
     save_path = saver.save(sess, ckpt_name, global_step=global_step)
-    log_to_file(log_file, f'Save model to {save_path}')
+    log_to_file(log_file, f'Save model to {save_path}\n')
     return True, global_step
 
 
@@ -109,6 +131,7 @@ if __name__ == '__main__':
     input_channel = 3
     num_cls = 1000
     batchsize = 16
+    val_iter = 64
     record_dir = './alexnet_record'
     if not os.path.isdir(record_dir):
         os.mkdir(record_dir)
@@ -116,6 +139,7 @@ if __name__ == '__main__':
     log_name = os.path.join(record_dir, 'alexnet_train.log')
 
     datagen = create_datagen(input_size, input_channel, num_cls, batchsize)
+    valgen = create_valgen(input_size, input_channel, num_cls, batchsize, val_iter)
     signal.signal(signal.SIGINT, SIGINT_handler)
 
     graph = tf.Graph()
@@ -151,15 +175,16 @@ if __name__ == '__main__':
         if opts_lr and opts_steps:
             success, global_step = train_job(lr=opts_lr, total_steps=opts_steps, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
         else:
-            success, global_step = train_job(lr=1e-3, total_steps=200000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+            learning_rates = [1e-3 for i in range(20)]
+            for i, lr in enumerate(learning_rates):
+                success, global_step = train_job(lr=lr, total_steps=10000, global_step=global_step, report_interval=2000, ckpt_name=ckpt_name, log_file=log_name)
 
             learning_rates = np.linspace(1e-3, 1e-5, 30)
             for i, lr in enumerate(learning_rates):
-                success, global_step = train_job(lr=lr, total_steps=100000, global_step=global_step, report_interval=500, ckpt_name=ckpt_name, log_file=log_name)
+                success, global_step = train_job(lr=lr, total_steps=100000, global_step=global_step, report_interval=2000, ckpt_name=ckpt_name, log_file=log_name)
                 if not success:
                     print('Loss becomes nan. Exiting...')
                     break
-
 
         
 
