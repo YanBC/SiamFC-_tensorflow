@@ -1,7 +1,7 @@
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import get_variable, constant
 
-from .common import Conv_Bn_Relu, Max_Pooling, Fully_Connected, Xcorr_Depthwise
+from .common import Conv_Bn_Relu, Max_Pooling, Fully_Connected, Xcorr_Depthwise, Dropout
 
 
 class ModelBase(tf.Module):
@@ -63,7 +63,10 @@ class AlexNet(ModelBase):
         self.conv_1 = Conv_Bn_Relu(in_channel=256, out_channel=256, strides=1, ksize=3, name='conv_1')
         self.conv_2 = Conv_Bn_Relu(in_channel=256, out_channel=128, strides=1, ksize=3, name='conv_2')
 
+        self.dropout_1 = Dropout(rate=0.5, name='dropout_1')
         self.fc_1 = Fully_Connected(in_size=2048, out_size=2048, has_relu=True, name='fc_1')
+        
+        self.dropout_2 = Dropout(rate=0.5, name='dropout_2')
         self.fc_2 = Fully_Connected(in_size=2048, out_size=1000, has_softmax=True, name='fc_2')
 
     def __call__(self, input_t, is_training=True):
@@ -74,7 +77,9 @@ class AlexNet(ModelBase):
         output_t = self.conv_2(output_t, is_training=is_training)
 
         output_t = tf.layers.flatten(output_t)
+        output_t = self.dropout_1(output_t, is_training=is_training)
         output_t = self.fc_1(output_t)
+        output_t = self.dropout_2(output_t, is_training=is_training)
         output_t = self.fc_2(output_t)
 
         return output_t

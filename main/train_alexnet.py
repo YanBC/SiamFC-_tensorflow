@@ -153,7 +153,7 @@ if __name__ == '__main__':
         acc = Classification_Acc(batchsize)
         # optimizer = AdamOptimizer(learning_rate=lr_t)
         optimizer = MomentumOptimizer(learning_rate=lr_t, momentum=0.9)
-        output_t = network(img_t)
+        output_t = network(img_t, is_training=True)
         loss_t = loss(output_t, y_true_t)
         acc_t = acc(output_t, y_true_t)
         minimize_op = optimizer.minimize(loss_t, var_list=network.trainable_variables)
