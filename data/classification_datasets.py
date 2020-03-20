@@ -182,7 +182,7 @@ class Imagenet2012(Classification_Dataset_Base):
         print('''finish loading''')
         return True
 
-    def save_data_to_file(self, desName='imagenet2012.pkl'):
+    def save_data_to_file(self, desName):
         print('''Imagenet2012: saving data...''')
         if self.data is None:
             print('You have to load data first')
@@ -217,22 +217,64 @@ class Imagenet2012(Classification_Dataset_Base):
             return self._channel_mean
 
 
+class Imagenet2012_Val(Imagenet2012):
 
-# test Imagenet2012
-if __name__ == '__main__':
-    imagenet_dir = './datasets/imagenet'
-    dataName = 'imagenet2012_filtered.pkl'
-    # imagenet_dataset = Imagenet2012(imagenet_dir)
-    # imagenet_dataset.load_data()
-    # imagenet_dataset.save_data_to_file(desName=dataName)
-    # del imagenet_dataset
+    def __init__(self, path, label_dict, channel_mean):
+        super().__init__(path)
+        assert os.path.isdir(self.annoDir)
+        assert os.path.isdir(self.imageDir)
+        self.label_dict = label_dict
+        self._channel_mean = channel_mean
 
-    imagenet_dataset = Imagenet2012(imagenet_dir)
-    imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
-    print(imagenet_dataset.size)
-    imagenet_dataset.show_image(randomly=True)
+    def _read_anno(self, args):
+        imagename, xmlname = args
 
+        imagepath = os.path.join(self.imageDir, imagename)
+        xmlpath = os.path.join(self.annoDir, xmlname)
+        image = cv.imread(imagepath)
+        with open(xmlpath) as f:
+            annotation = xmltodict.parse(f.read())
 
+        width = int(annotation['annotation']['size']['width'])
+        height = int(annotation['annotation']['size']['height'])
+        obj = annotation['annotation']['object']
+        if isinstance(obj, list):
+            obj = obj[0]
+        left = int(obj['bndbox']['xmin'])
+        top = int(obj['bndbox']['ymin'])
+        right = int(obj['bndbox']['xmax'])
+        bottom = int(obj['bndbox']['ymax'])
+        label = obj['name']
+
+        h, w, c = image.shape
+        if (h != height) or (w != width) or (c != 3) or (label not in self.label_dict.keys()):
+            return None
+        else:
+            return (imagename, [left, top, right, bottom], label, [width, height])
+
+    def load_data(self):
+        print('Imagenet2012: loading data...')
+        
+        imageFiles = sorted(os.listdir(self.imageDir))
+        annoFiles = sorted(os.listdir(self.annoDir))
+        args = [x for x in zip(imageFiles, annoFiles)]
+
+        with md.Pool(processes=8) as p:
+            data_list = p.map(self._read_anno, args)
+
+        self.data = []
+        for d in data_list:
+            if d is None:
+                continue
+            imagePath = d[0]
+            coors = d[1]
+            label = self.label_dict[d[2]]
+            size = d[3]
+            self.data.append(Data(imagePath=imagePath, coors=coors, label=label, size=size))
+        self.data_ids = [x for x in range(len(self.data))]
+
+        print('''finish loading''')
+        return True
 
 
 
@@ -350,6 +392,53 @@ class Alexnet_Sampler:
         X = np.concatenate(X).astype(np.float32)
         Y = np.concatenate(Y).astype(np.float32)
         return {'X': X, 'Y':Y}
+
+
+
+
+#########################
+# tests
+#########################
+
+# # test Imagenet2012
+# if __name__ == '__main__':
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012_filtered.pkl'
+#     imagenet_dataset = Imagenet2012(imagenet_dir)
+#     imagenet_dataset.load_data()
+#     imagenet_dataset.save_data_to_file(desName=dataName)
+#     del imagenet_dataset
+
+#     imagenet_dataset = Imagenet2012(imagenet_dir)
+#     imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+#     print(imagenet_dataset.size)
+#     # imagenet_dataset.show_image(randomly=True)
+#     del imagenet_dataset
+
+
+
+
+# # test Imagenet2012_Val
+# if __name__ == '__main__':
+#     imagenet_dir = './datasets/imagenet'
+#     dataName = 'imagenet2012_filtered.pkl'
+#     imagenet_dataset = Imagenet2012(imagenet_dir)
+#     imagenet_dataset.load_data_from_file(os.path.join(imagenet_dataset.storage, dataName))
+#     label_dict = imagenet_dataset.label_dict
+#     channel_mean = imagenet_dataset.channel_mean
+
+#     val_imagenet_dir = './datasets/imagenet/validation_dataset'
+#     val_dataName = 'imagenet2012_val.pkl'
+#     val_imagenet_dataset = Imagenet2012_Val(val_imagenet_dir, label_dict, channel_mean)
+#     val_imagenet_dataset.load_data()
+#     val_imagenet_dataset.save_data_to_file(desName=val_dataName)
+#     del val_imagenet_dataset
+
+#     val_imagenet_dataset = Imagenet2012_Val(val_imagenet_dir, label_dict, channel_mean)
+#     val_imagenet_dataset.load_data_from_file(os.path.join(val_imagenet_dataset.storage, val_dataName))
+#     print(val_imagenet_dataset.size)
+#     val_imagenet_dataset.show_image(randomly=True)
+
 
 
 
