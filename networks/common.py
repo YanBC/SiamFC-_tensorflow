@@ -4,6 +4,7 @@ if __name__ == '__main__':
 from tensorflow.compat.v1.nn import conv2d, bias_add, batch_normalization, max_pool2d
 from tensorflow.compat.v1.nn import softmax, relu
 from tensorflow.compat.v1.nn import depthwise_conv2d
+from tensorflow.compat.v1.nn import dropout
 from tensorflow.compat.v1 import get_variable
 from tensorflow.compat.v1.initializers import he_normal, zeros, ones
 
@@ -137,6 +138,19 @@ class Max_Pooling(tf.Module):
         output_t = max_pool2d(input_t, ksize=self.ksize, strides=self.strides, padding=self.padding)
         return output_t
 
+
+
+class Dropout(tf.Module):
+    def __init__(self, name=None, rate=0.5):
+        super().__init__(name=name)
+        self.rate = rate
+
+    def __call__(self, input_t, is_training=True):
+        if is_training:
+            output_t = dropout(input_t, rate=self.rate)
+        else:
+            output_t = input_t
+        return output_t
 
 
 
