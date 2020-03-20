@@ -3,9 +3,12 @@ from typing import Dict
 
 import numpy as np
 
+max_area_rate = 0.6
+min_area_rate = 0.001
+max_ratio = 10
 
-def filter_unreasonable_training_boxes(im: np.array, bbox,
-                                       config: Dict) -> bool:
+
+def is_reasonable(im: np.array, bbox) -> bool:
     r""" 
     Filter too small,too large objects and objects with extreme ratio
     No input check. Assume that all imput (im, bbox) are valid object
@@ -23,10 +26,10 @@ def filter_unreasonable_training_boxes(im: np.array, bbox,
     bbox_area_rate = bbox_area / im_area
     bbox_ratio = (bbox[3] - bbox[1] + 1) / max(bbox[2] - bbox[0] + 1, eps)
     # valid trainng box condition
-    conds = [(config["min_area_rate"] < bbox_area_rate,
-              bbox_area_rate < config["max_area_rate"]),
-             max(bbox_ratio, 1.0 / max(bbox_ratio, eps)) < config["max_ratio"]]
+    conds = [(min_area_rate < bbox_area_rate,
+              bbox_area_rate < max_area_rate),
+             max(bbox_ratio, 1.0 / max(bbox_ratio, eps)) < max_ratio]
     # if not all conditions are satisfied, filter the sample
-    filter_flag = not all(conds)
+    reasonable_flag = all(conds)
 
-    return filter_flag
+    return reasonable_flag

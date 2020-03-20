@@ -6,7 +6,7 @@ import sys
 sys.path.append('.')
 
 from utils.bbox import xywh2xyxy
-from utils.filter_box import filter_unreasonable_training_boxes
+from utils.filter_box import is_reasonable
 from utils.crop_track_pair import crop_track_pair
 from utils.make_densebox_target import make_densebox_target
 
@@ -216,11 +216,14 @@ class Siamfcpp_Sampler:
         for i in range(self.batchsize):
             is_negative_pair = rng.rand() < self.neg_ratio
 
-            if is_negative_pair:
-                data1 = self._sample_frame(rng)
-                data2 = self._sample_frame(rng)
-            else:
-                data1, data2 = self._sample_pair(rng)
+            found_reasonable_data = False
+            while not found_reasonable_data:
+                if is_negative_pair:
+                    data1 = self._sample_frame(rng)
+                    data2 = self._sample_frame(rng)
+                else:
+                    data1, data2 = self._sample_pair(rng)
+                found_reasonable_data = is_reasonable(data1['image'], data1['bbox']) and is_reasonable(data2['image'], data2['bbox'])
 
             sampled_data = dict(data_z=data1, data_x=data2, is_negative_pair=is_negative_pair)
             croped_data = self._crop_data(sampled_data)
