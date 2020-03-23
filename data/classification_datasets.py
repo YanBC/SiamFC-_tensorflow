@@ -381,7 +381,7 @@ class Alexnet_Sampler:
         X = []
         Y = []
         for index in indice:
-            data = self.dataset.data[all_data_ids[index]]
+            data = self.dataset.data[index]
             imagePath = os.path.join(self.dataset.imageDir, data.imagePath)
             image = cv.imread(imagePath)
             coors = data.coors
