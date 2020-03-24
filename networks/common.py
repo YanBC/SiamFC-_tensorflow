@@ -28,7 +28,7 @@ class Conv_Bn_Relu(tf.Module):
 
                 # borrow from https://github.com/udacity/deep-learning/blob/master/batch-norm/Batch_Normalization_Solutions.ipynb
                 if self.has_bn:
-                    self.epsilon = 1e-3
+                    self.epsilon = 1e-5
                     self.gamma = get_variable(name='means', shape=[out_channel,], initializer=ones(), trainable=True)
                     self.beta = get_variable(name='variances', shape=[out_channel,], initializer=zeros(), trainable=True)
                     self.pop_mean = get_variable(name='offset', shape=[out_channel,], initializer=zeros(), trainable=False)
