@@ -146,8 +146,8 @@ class DenseBoxHead(ModelBase):
 
         offset = self.offset(output_bbox, is_training=is_training)
         with tf.name_scope('offset'):
-            offset = (self.si * offset + self.bi) * self.total_stride
-            offset = tf.exp(offset, name='exp')
+            offset = (self.si * offset + self.bi)
+            offset = tf.exp(offset, name='exp') * self.total_stride
 
             offset_B, offset_H, offset_W, offset_C = tf.unstack(tf.shape(offset, name='shape'))
             offset = tf.reshape(offset, (offset_B, offset_H*offset_W, offset_C), name='reshape')
